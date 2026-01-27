@@ -1,0 +1,82 @@
+body {
+    margin: 0;
+    font-family: Segoe UI, sans-serif;
+    background: #f4f6f9;
+}
+
+.app-container {
+    display: flex;
+    height: 100vh;
+}
+
+.sidebar {
+    width: 260px;
+    background: #1f4e79;
+    color: white;
+    padding: 20px;
+}
+
+.sidebar input, .sidebar button {
+    width: 100%;
+    margin-bottom: 10px;
+}
+
+.driver-list li {
+    list-style: none;
+    padding: 8px;
+    cursor: pointer;
+}
+
+.driver-list .active {
+    background: #2e75b6;
+}
+
+.content {
+    flex: 1;
+    padding: 20px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+}
+
+th, td {
+    border: 1px solid #ddd;
+    padding: 8px;
+}
+
+th {
+    background: #e9eef3;
+}
+
+.buttons {
+    margin: 10px 0;
+}
+
+.buttons button {
+    margin-right: 5px;
+}
+
+.summary-cards {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.card {
+    flex: 1;
+    padding: 15px;
+    border-radius: 6px;
+    text-align: center;
+    color: white;
+}
+
+.green { background: #4caf50; }
+.red { background: #e53935; }
+
+.danger {
+    background: #e53935;
+    color: white;
+}
