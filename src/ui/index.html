@@ -1,67 +1,59 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Driver Shift Tracker</title>
-    <link rel="stylesheet" href="styles.css">
-</head>
-<body>
+    <head>
+        <meta charset="UTF-8" />
+        <title>Driver Shift Tracker</title>
+        <link rel="stylesheet" href="styles.css" />
+    </head>
+    <body>
+        <div class="app-container">
+            <aside class="sidebar">
+                <h2>Driver Selection</h2>
 
-<div class="app-container">
+                <label>Date Range</label>
+                <input type="date" />
+                <input type="date" />
 
-    <aside class="sidebar">
-        <h2>Driver Selection</h2>
+                <button>Search</button>
 
-        <label>Date Range</label>
-        <input type="date">
-        <input type="date">
+                <h3>Drivers</h3>
+                <ul class="driver-list" id="driver-list">
+                    <!-- Drivers loaded dynamically -->
+                </ul>
+            </aside>
 
-        <button>Search</button>
+            <main class="content">
+                <h1>Shift Records</h1>
 
-        <h3>Drivers</h3>
-        <ul class="driver-list">
-            <li class="active">John Smith</li>
-            <li>Sarah Davis</li>
-            <li>Mike Johnson</li>
-        </ul>
-    </aside>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Start</th>
+                            <th>End</th>
+                            <th>Mileage</th>
+                            <th>Cash Tips</th>
+                            <th>Credit Tips</th>
+                            <th>Owed</th>
+                            <th>Hourly</th>
+                        </tr>
+                    </thead>
+                    <tbody id="shift-table"></tbody>
+                </table>
 
-    <main class="content">
-        <h1>Shift Records</h1>
+                <div class="buttons">
+                    <button>Add Shift</button>
+                    <button>Edit Shift</button>
+                    <button class="danger">Delete Shift</button>
+                </div>
 
-        <table>
-            <thead>
-                <tr>
-                    <th>Date</th>
-                    <th>Start</th>
-                    <th>End</th>
-                    <th>Mileage</th>
-                    <th>Cash Tips</th>
-                    <th>Credit Tips</th>
-                    <th>Owed</th>
-                    <th>Hourly</th>
-                </tr>
-            </thead>
-            <tbody id="shift-table"></tbody>
-        </table>
-
-        <div class="buttons">
-            <button>Add Shift</button>
-            <button>Edit Shift</button>
-            <button class="danger">Delete Shift</button>
+                <div class="summary-cards" id="summary-cards">
+                    <!-- Summary loaded dynamically -->
+                </div>
+            </main>
         </div>
 
-        <div class="summary-cards">
-            <div class="card green">Total Mileage<br><strong>315</strong></div>
-            <div class="card green">Cash Tips<br><strong>$165</strong></div>
-            <div class="card green">Credit Tips<br><strong>$175</strong></div>
-            <div class="card red">Owed<br><strong>-$105</strong></div>
-            <div class="card green">Avg Hourly<br><strong>$19.75</strong></div>
-        </div>
-    </main>
-
-</div>
-
-<script src="app.js"></script>
-</body>
+        <script src="qwebchannel.js"></script>
+        <script src="app.js"></script>
+    </body>
 </html>
