@@ -19,17 +19,19 @@ class DBHandler(QObject):
         drivers = cursor.fetchall()
         return json.dumps([dict(row) for row in drivers])
 
-    @Slot(str, result=str)
-    def get_shifts(self, driver_id):
+    @Slot(str, str, str, result=str)
+    def get_shifts(self, driver_id, start_date="", end_date=""):
         cursor = self.conn.cursor()
-        cursor.execute(
-            """
-               SELECT date, start_time, end_time, mileage, cash_tips, credit_tips, owed, hourly_rate
-               FROM shifts WHERE driver_id = ?
-               ORDER BY date DESC
-           """,
-            (driver_id,),
-        )
+        query = """
+           SELECT date, start_time, end_time, mileage, cash_tips, credit_tips, owed, hourly_rate
+           FROM shifts WHERE driver_id = ?
+        """
+        params = [driver_id]
+        if start_date and end_date:
+            query += " AND date BETWEEN ? AND ?"
+            params.extend([start_date, end_date])
+        query += " ORDER BY date DESC"
+        cursor.execute(query, params)
         shifts = cursor.fetchall()
         result = []
         for row in shifts:
@@ -80,21 +82,23 @@ class DBHandler(QObject):
         )
         self.conn.commit()
 
-    @Slot(str, result=str)
-    def get_summary(self, driver_id):
+    @Slot(str, str, str, result=str)
+    def get_summary(self, driver_id, start_date="", end_date=""):
         cursor = self.conn.cursor()
-        cursor.execute(
-            """
-               SELECT
-                   SUM(mileage) as total_mileage,
-                   SUM(cash_tips) as total_cash,
-                   SUM(credit_tips) as total_credit,
-                   SUM(owed) as total_owed,
-                   AVG(hourly_rate) as avg_hourly
-               FROM shifts WHERE driver_id = ?
-           """,
-            (driver_id,),
-        )
+        query = """
+           SELECT
+               SUM(mileage) as total_mileage,
+               SUM(cash_tips) as total_cash,
+               SUM(credit_tips) as total_credit,
+               SUM(owed) as total_owed,
+               AVG(hourly_rate) as avg_hourly
+           FROM shifts WHERE driver_id = ?
+        """
+        params = [driver_id]
+        if start_date and end_date:
+            query += " AND date BETWEEN ? AND ?"
+            params.extend([start_date, end_date])
+        cursor.execute(query, params)
         row = cursor.fetchone()
         return json.dumps(
             {

@@ -1,5 +1,7 @@
 let currentDriverId = null;
 let db = null;
+let startDate = "";
+let endDate = "";
 
 new QWebChannel(qt.webChannelTransport, function (channel) {
   db = channel.objects.db;
@@ -36,7 +38,7 @@ function selectDriver(driverId, element) {
 
 function loadShifts() {
   if (!currentDriverId) return;
-  db.get_shifts(currentDriverId).then((shiftsJson) => {
+  db.get_shifts(currentDriverId, startDate, endDate).then((shiftsJson) => {
     const shifts = JSON.parse(shiftsJson);
     const table = document.getElementById("shift-table");
     table.innerHTML = "";
@@ -59,7 +61,7 @@ function loadShifts() {
 
 function loadSummary() {
   if (!currentDriverId) return;
-  db.get_summary(currentDriverId).then((summaryJson) => {
+  db.get_summary(currentDriverId, startDate, endDate).then((summaryJson) => {
     const summary = JSON.parse(summaryJson);
     const cards = document.getElementById("summary-cards");
     cards.innerHTML = `
@@ -73,7 +75,10 @@ function loadSummary() {
 }
 
 document.getElementById("search-btn").addEventListener("click", () => {
-  console.log("Search clicked");
+  startDate = document.getElementById("start-date").value;
+  endDate = document.getElementById("end-date").value;
+  loadShifts();
+  loadSummary();
 });
 
 document.getElementById("add-shift-btn").addEventListener("click", () => {

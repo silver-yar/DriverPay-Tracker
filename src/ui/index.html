@@ -11,10 +11,10 @@
                 <h2>Driver Selection</h2>
 
                 <label>Date Range</label>
-                <input type="date" />
-                <input type="date" />
+                <input type="date" id="start-date" />
+                <input type="date" id="end-date" />
 
-                <button>Search</button>
+                <button id="search-btn">Search</button>
 
                 <h3>Drivers</h3>
                 <ul class="driver-list" id="driver-list">
@@ -42,9 +42,11 @@
                 </table>
 
                 <div class="buttons">
-                    <button>Add Shift</button>
-                    <button>Edit Shift</button>
-                    <button class="danger">Delete Shift</button>
+                    <button id="add-shift-btn">Add Shift</button>
+                    <button id="edit-shift-btn">Edit Shift</button>
+                    <button id="delete-shift-btn" class="danger">
+                        Delete Shift
+                    </button>
                 </div>
 
                 <div class="summary-cards" id="summary-cards">
