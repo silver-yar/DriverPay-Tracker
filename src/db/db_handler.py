@@ -50,6 +50,22 @@ class DBHandler(QObject):
             )
         return json.dumps(result)
 
+    @Slot(str, result=str)
+    def get_shift(self, shift_id):
+        cursor = self.conn.cursor()
+        cursor.execute(
+            """
+               SELECT id, driver_id, date, start_time, end_time, mileage, cash_tips, credit_tips, owed, hourly_rate
+               FROM shifts WHERE id = ?
+           """,
+            (shift_id,),
+        )
+        row = cursor.fetchone()
+        if row:
+            return json.dumps(dict(row))
+        else:
+            return json.dumps({})
+
     @Slot(str, str, str, str, float, float, float, float, float)
     def add_shift(
         self,
@@ -79,6 +95,39 @@ class DBHandler(QObject):
                 credit_tips,
                 owed,
                 hourly_rate,
+            ),
+        )
+        self.conn.commit()
+
+    @Slot(str, str, str, str, float, float, float, float, float)
+    def update_shift(
+        self,
+        shift_id,
+        date,
+        start_time,
+        end_time,
+        mileage,
+        cash_tips,
+        credit_tips,
+        owed,
+        hourly_rate,
+    ):
+        cursor = self.conn.cursor()
+        cursor.execute(
+            """
+               UPDATE shifts SET date = ?, start_time = ?, end_time = ?, mileage = ?, cash_tips = ?, credit_tips = ?, owed = ?, hourly_rate = ?
+               WHERE id = ?
+           """,
+            (
+                date,
+                start_time,
+                end_time,
+                mileage,
+                cash_tips,
+                credit_tips,
+                owed,
+                hourly_rate,
+                shift_id,
             ),
         )
         self.conn.commit()

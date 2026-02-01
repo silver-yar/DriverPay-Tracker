@@ -2,6 +2,8 @@ let currentDriverId = null;
 let db = null;
 let startDate = "";
 let endDate = "";
+let modalMode = "add";
+let currentShiftId = null;
 
 console.log("App.js loaded");
 
@@ -88,8 +90,15 @@ document.getElementById("search-btn").addEventListener("click", () => {
 });
 
 document.getElementById("add-shift-btn").addEventListener("click", () => {
+  modalMode = "add";
+  currentShiftId = null;
+  document.getElementById("modal-title").textContent = "Add New Shift";
+  document.querySelector('#add-shift-form button[type="submit"]').textContent =
+    "Add Shift";
   document.getElementById("modal-driver-name").textContent =
     document.querySelector(".driver-list .active").textContent;
+  document.getElementById("shift-id").value = "";
+  document.getElementById("add-shift-form").reset();
   document.getElementById("add-shift-modal").style.display = "block";
 });
 
@@ -103,17 +112,37 @@ document.getElementById("add-shift-form").addEventListener("submit", (e) => {
   const credit = parseFloat(document.getElementById("shift-credit").value);
   const owed = parseFloat(document.getElementById("shift-owed").value);
   const hourly = parseFloat(document.getElementById("shift-hourly").value);
-  db.add_shift(
-    currentDriverId,
-    date,
-    start,
-    end,
-    mileage,
-    cash,
-    credit,
-    owed,
-    hourly,
-  );
+  if (modalMode === "edit") {
+    db.update_shift(
+      currentShiftId,
+      date,
+      start,
+      end,
+      mileage,
+      cash,
+      credit,
+      owed,
+      hourly,
+    );
+  } else {
+    db.add_shift(
+      currentDriverId,
+      date,
+      start,
+      end,
+      mileage,
+      cash,
+      credit,
+      owed,
+      hourly,
+    );
+  }
+  modalMode = "add";
+  currentShiftId = null;
+  document.getElementById("modal-title").textContent = "Add New Shift";
+  document.querySelector('#add-shift-form button[type="submit"]').textContent =
+    "Add Shift";
+  document.getElementById("shift-id").value = "";
   document.getElementById("add-shift-modal").style.display = "none";
   document.getElementById("add-shift-form").reset();
   loadShifts();
@@ -121,6 +150,12 @@ document.getElementById("add-shift-form").addEventListener("submit", (e) => {
 });
 
 document.getElementById("cancel-add").addEventListener("click", () => {
+  modalMode = "add";
+  currentShiftId = null;
+  document.getElementById("modal-title").textContent = "Add New Shift";
+  document.querySelector('#add-shift-form button[type="submit"]').textContent =
+    "Add Shift";
+  document.getElementById("shift-id").value = "";
   document.getElementById("add-shift-modal").style.display = "none";
   document.getElementById("add-shift-form").reset();
 });
@@ -145,5 +180,37 @@ document.getElementById("delete-shift-btn").addEventListener("click", () => {
 });
 
 document.getElementById("edit-shift-btn").addEventListener("click", () => {
-  console.log("Edit shift clicked");
+  const checked = document.querySelectorAll(
+    '#shift-table input[type="checkbox"]:checked',
+  );
+  if (checked.length !== 1) {
+    alert("Please select exactly one shift to edit.");
+    return;
+  }
+  const shiftId = checked[0].dataset.id;
+  db.get_shift(shiftId).then((shiftJson) => {
+    const shift = JSON.parse(shiftJson);
+    if (!shift.id) {
+      alert("Shift not found.");
+      return;
+    }
+    modalMode = "edit";
+    currentShiftId = shiftId;
+    document.getElementById("modal-title").textContent = "Edit Shift";
+    document.querySelector(
+      '#add-shift-form button[type="submit"]',
+    ).textContent = "Edit Shift";
+    document.getElementById("modal-driver-name").textContent =
+      document.querySelector(".driver-list .active").textContent;
+    document.getElementById("shift-id").value = shift.id;
+    document.getElementById("shift-date").value = shift.date;
+    document.getElementById("shift-start").value = shift.start_time;
+    document.getElementById("shift-end").value = shift.end_time;
+    document.getElementById("shift-mileage").value = shift.mileage;
+    document.getElementById("shift-cash").value = shift.cash_tips;
+    document.getElementById("shift-credit").value = shift.credit_tips;
+    document.getElementById("shift-owed").value = shift.owed;
+    document.getElementById("shift-hourly").value = shift.hourly_rate;
+    document.getElementById("add-shift-modal").style.display = "block";
+  });
 });
