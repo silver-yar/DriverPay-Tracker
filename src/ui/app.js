@@ -35,6 +35,8 @@ function selectDriver(driverId, element) {
     .querySelectorAll(".driver-list li")
     .forEach((li) => li.classList.remove("active"));
   element.classList.add("active");
+  document.getElementById("modal-driver-name").textContent =
+    element.textContent;
   loadShifts();
   loadSummary();
 }
@@ -85,7 +87,39 @@ document.getElementById("search-btn").addEventListener("click", () => {
 });
 
 document.getElementById("add-shift-btn").addEventListener("click", () => {
-  console.log("Add shift clicked");
+  document.getElementById("modal-driver-name").textContent =
+    document.querySelector(".driver-list .active").textContent;
+  document.getElementById("add-shift-modal").style.display = "block";
 });
 
-// TODO: edit and delete
+document.getElementById("add-shift-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const date = document.getElementById("shift-date").value;
+  const start = document.getElementById("shift-start").value;
+  const end = document.getElementById("shift-end").value;
+  const mileage = parseFloat(document.getElementById("shift-mileage").value);
+  const cash = parseFloat(document.getElementById("shift-cash").value);
+  const credit = parseFloat(document.getElementById("shift-credit").value);
+  const owed = parseFloat(document.getElementById("shift-owed").value);
+  const hourly = parseFloat(document.getElementById("shift-hourly").value);
+  db.add_shift(
+    currentDriverId,
+    date,
+    start,
+    end,
+    mileage,
+    cash,
+    credit,
+    owed,
+    hourly,
+  );
+  document.getElementById("add-shift-modal").style.display = "none";
+  document.getElementById("add-shift-form").reset();
+  loadShifts();
+  loadSummary();
+});
+
+document.getElementById("cancel-add").addEventListener("click", () => {
+  document.getElementById("add-shift-modal").style.display = "none";
+  document.getElementById("add-shift-form").reset();
+});

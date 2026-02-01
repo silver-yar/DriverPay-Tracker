@@ -53,6 +53,100 @@
                     <!-- Summary loaded dynamically -->
                 </div>
             </main>
+
+            <div
+                id="add-shift-modal"
+                style="
+                    display: none;
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.5);
+                    z-index: 1000;
+                "
+            >
+                <div
+                    style="
+                        position: absolute;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, -50%);
+                        background: white;
+                        padding: 20px;
+                        border-radius: 5px;
+                        width: 400px;
+                    "
+                >
+                    <h2>Add New Shift</h2>
+                    <form id="add-shift-form">
+                        <label
+                            >Driver: <span id="modal-driver-name"></span></label
+                        ><br /><br />
+                        <label
+                            >Date:
+                            <input
+                                type="date"
+                                id="shift-date"
+                                required /></label
+                        ><br /><br />
+                        <label
+                            >Start Time:
+                            <input
+                                type="time"
+                                id="shift-start"
+                                required /></label
+                        ><br /><br />
+                        <label
+                            >End Time:
+                            <input type="time" id="shift-end" required /></label
+                        ><br /><br />
+                        <label
+                            >Mileage:
+                            <input
+                                type="number"
+                                step="0.1"
+                                id="shift-mileage"
+                                required /></label
+                        ><br /><br />
+                        <label
+                            >Cash Tips:
+                            <input
+                                type="number"
+                                step="0.01"
+                                id="shift-cash"
+                                required /></label
+                        ><br /><br />
+                        <label
+                            >Credit Tips:
+                            <input
+                                type="number"
+                                step="0.01"
+                                id="shift-credit"
+                                required /></label
+                        ><br /><br />
+                        <label
+                            >Owed:
+                            <input
+                                type="number"
+                                step="0.01"
+                                id="shift-owed"
+                                required /></label
+                        ><br /><br />
+                        <label
+                            >Hourly Rate:
+                            <input
+                                type="number"
+                                step="0.01"
+                                id="shift-hourly"
+                                required /></label
+                        ><br /><br />
+                        <button type="submit">Add Shift</button>
+                        <button type="button" id="cancel-add">Cancel</button>
+                    </form>
+                </div>
+            </div>
         </div>
 
         <script src="qwebchannel.js"></script>
