@@ -50,6 +50,7 @@ function loadShifts() {
     shifts.forEach((shift) => {
       const row = document.createElement("tr");
       row.innerHTML = `
+                <td><input type="checkbox" data-id="${shift.id}"></td>
                 <td>${shift.date}</td>
                 <td>${shift.start}</td>
                 <td>${shift.end}</td>
@@ -122,4 +123,27 @@ document.getElementById("add-shift-form").addEventListener("submit", (e) => {
 document.getElementById("cancel-add").addEventListener("click", () => {
   document.getElementById("add-shift-modal").style.display = "none";
   document.getElementById("add-shift-form").reset();
+});
+
+document.getElementById("delete-shift-btn").addEventListener("click", () => {
+  const checkboxes = document.querySelectorAll(
+    '#shift-table input[type="checkbox"]:checked',
+  );
+  if (checkboxes.length === 0) {
+    alert("Please select at least one shift to delete.");
+    return;
+  }
+  if (
+    confirm(`Are you sure you want to delete ${checkboxes.length} shift(s)?`)
+  ) {
+    checkboxes.forEach((cb) => {
+      db.delete_shift(cb.dataset.id);
+    });
+    loadShifts();
+    loadSummary();
+  }
+});
+
+document.getElementById("edit-shift-btn").addEventListener("click", () => {
+  console.log("Edit shift clicked");
 });

@@ -23,7 +23,7 @@ class DBHandler(QObject):
     def get_shifts(self, driver_id, start_date="", end_date=""):
         cursor = self.conn.cursor()
         query = """
-           SELECT date, start_time, end_time, mileage, cash_tips, credit_tips, owed, hourly_rate
+           SELECT id, date, start_time, end_time, mileage, cash_tips, credit_tips, owed, hourly_rate
            FROM shifts WHERE driver_id = ?
         """
         params = [driver_id]
@@ -37,6 +37,7 @@ class DBHandler(QObject):
         for row in shifts:
             result.append(
                 {
+                    "id": row["id"],
                     "date": row["date"],
                     "start": row["start_time"],
                     "end": row["end_time"],
@@ -80,6 +81,12 @@ class DBHandler(QObject):
                 hourly_rate,
             ),
         )
+        self.conn.commit()
+
+    @Slot(str)
+    def delete_shift(self, shift_id):
+        cursor = self.conn.cursor()
+        cursor.execute("DELETE FROM shifts WHERE id = ?", (shift_id,))
         self.conn.commit()
 
     @Slot(str, str, str, result=str)
