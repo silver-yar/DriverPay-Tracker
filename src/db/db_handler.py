@@ -6,9 +6,12 @@ from PySide6.QtCore import QObject, Slot
 
 
 class DBHandler(QObject):
-    def __init__(self):
+    def __init__(self, db_path=None):
         super().__init__()
-        db_path = os.path.join(os.path.dirname(__file__), "..", "driver_pay_tracker.db")
+        if db_path is None:
+            db_path = os.path.join(
+                os.path.dirname(__file__), "..", "driver_pay_tracker.db"
+            )
         self.conn = sqlite3.connect(db_path)
         self.conn.row_factory = sqlite3.Row
 

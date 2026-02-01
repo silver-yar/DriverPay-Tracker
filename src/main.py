@@ -10,7 +10,8 @@ from db.db_handler import DBHandler
 
 app = QApplication(sys.argv)
 
-db_handler = DBHandler()
+db_path = Path(__file__).parent / "driver_pay_tracker.db"
+db_handler = DBHandler(str(db_path))
 channel = QWebChannel(app)
 channel.registerObject("db", db_handler)
 
