@@ -3,8 +3,11 @@ let db = null;
 let startDate = "";
 let endDate = "";
 
+console.log("App.js loaded");
+
 new QWebChannel(qt.webChannelTransport, function (channel) {
   db = channel.objects.db;
+  console.log("QWebChannel ready");
   loadDrivers();
 });
 
