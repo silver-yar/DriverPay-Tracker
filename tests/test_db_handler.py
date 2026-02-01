@@ -1,5 +1,3 @@
-import sqlite3
-
 import pytest
 
 from src.db.db_handler import DBHandler
