@@ -48,6 +48,12 @@ DriverPay Tracker is a desktop application designed to help delivery drivers acc
    ```bash
    python src/db/db_setup.py
    ```
+   
+   ⚠️ **Warning**: Running the database setup script will append to any existing database file, which may cause schema conflicts. If you have an existing database, delete it first:
+   ```bash
+   rm src/driver_pay_tracker.db
+   ```
+   Then run the setup script.
 
 ## Running the Application
 
