@@ -139,12 +139,12 @@ function loadDeliveries() {
           delivery.amount_collected.replace("$", ""),
         );
         const additionalCashTip = delivery.additional_cash_tip || 0;
-        const totalTip = tip + additionalCashTip;
-        const total = (subtotal + totalTip).toFixed(2);
+        // Tip already includes additional cash tip in database
+        const total = (subtotal + tip).toFixed(2);
         // Calculate tip percentage based on amount collected
         let tipPercent = 0;
         if (collected > 0) {
-          tipPercent = (totalTip / collected) * 100;
+          tipPercent = (tip / collected) * 100;
         }
         const additionalCashTipDisplay = delivery.additional_cash_tip
           ? `$${parseFloat(delivery.additional_cash_tip).toFixed(2)}`
@@ -174,17 +174,16 @@ function loadDeliveriesSummary() {
     (summaryJson) => {
       const summary = JSON.parse(summaryJson);
       const cards = document.getElementById("delivery-summary-cards");
-      const totalTipsWithAdditional =
-        summary.total_tips + summary.total_additional_tips;
+      // total_tips already includes additional_cash_tip in database calculation
       const avgTip =
         summary.delivery_count > 0
-          ? totalTipsWithAdditional / summary.delivery_count
+          ? summary.total_tips / summary.delivery_count
           : 0;
       cards.innerHTML = `
             <div class="card green">Deliveries<br><strong>${summary.delivery_count}</strong></div>
             <div class="card green">Total Subtotal<br><strong>$${summary.total_subtotal.toFixed(2)}</strong></div>
             <div class="card green">Total Collected<br><strong>$${summary.total_collected.toFixed(2)}</strong></div>
-            <div class="card green">Total Tips<br><strong>$${totalTipsWithAdditional.toFixed(2)}</strong></div>
+            <div class="card green">Total Tips<br><strong>$${summary.total_tips.toFixed(2)}</strong></div>
             <div class="card green">Avg Tip<br><strong>$${avgTip.toFixed(2)}</strong></div>
         `;
     },
