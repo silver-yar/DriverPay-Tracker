@@ -255,6 +255,21 @@ def test_add_delivery_valid_values(db_handler):
     assert result_dict["success"] == True
 
 
+def test_add_delivery_collected_less_than_subtotal(db_handler):
+    import json
+
+    # Test that amount collected cannot be less than subtotal
+    result = db_handler.add_delivery(
+        1, "2023-01-03", "#1003", "Cash", 30.00, 25.00, -5.00
+    )
+    result_dict = json.loads(result)
+    assert result_dict["success"] == False
+    assert (
+        "amount collected cannot be less than order subtotal"
+        in str(result_dict["errors"]).lower()
+    )
+
+
 def test_update_delivery_validation(db_handler):
     import json
 
@@ -271,6 +286,17 @@ def test_update_delivery_validation(db_handler):
     )
     result_dict = json.loads(result)
     assert result_dict["success"] == False
+
+    # Test update with collected less than subtotal
+    result = db_handler.update_delivery(
+        1, "2023-01-01", "#1001", "Cash", 40.00, 35.00, -5.00
+    )
+    result_dict = json.loads(result)
+    assert result_dict["success"] == False
+    assert (
+        "amount collected cannot be less than order subtotal"
+        in str(result_dict["errors"]).lower()
+    )
 
     # Test update with valid values
     result = db_handler.update_delivery(

@@ -215,7 +215,7 @@ class DBHandler(QObject):
             return json.dumps({})
 
     def _validate_delivery_amounts(self, order_subtotal, amount_collected):
-        """Validate delivery amounts: non-negative and max 2 decimal places."""
+        """Validate delivery amounts: non-negative, max 2 decimal places, and collected >= subtotal."""
         errors = []
 
         # Check for non-negative values
@@ -223,6 +223,10 @@ class DBHandler(QObject):
             errors.append("Order subtotal cannot be negative.")
         if amount_collected < 0:
             errors.append("Amount collected cannot be negative.")
+
+        # Check that amount collected is not less than subtotal
+        if amount_collected < order_subtotal:
+            errors.append("Amount collected cannot be less than order subtotal.")
 
         # Check for maximum 2 decimal places
         def has_more_than_2_decimals(value):

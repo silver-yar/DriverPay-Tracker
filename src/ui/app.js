@@ -343,6 +343,19 @@ function validateCurrencyInput(input) {
   return true;
 }
 
+function validateCollectedVsSubtotal() {
+  const subtotal =
+    parseFloat(document.getElementById("delivery-subtotal").value) || 0;
+  const collected =
+    parseFloat(document.getElementById("delivery-collected").value) || 0;
+
+  if (collected < subtotal) {
+    alert("Amount collected cannot be less than order subtotal.");
+    return false;
+  }
+  return true;
+}
+
 function calculateTip() {
   const subtotal =
     parseFloat(document.getElementById("delivery-subtotal").value) || 0;
@@ -387,12 +400,14 @@ document
   .getElementById("delivery-subtotal")
   .addEventListener("blur", function () {
     validateCurrencyInput(this);
+    validateCollectedVsSubtotal();
     calculateTip();
   });
 document
   .getElementById("delivery-collected")
   .addEventListener("blur", function () {
     validateCurrencyInput(this);
+    validateCollectedVsSubtotal();
     calculateTip();
   });
 
@@ -407,6 +422,11 @@ document.getElementById("add-delivery-form").addEventListener("submit", (e) => {
     !validateCurrencyInput(subtotalInput) ||
     !validateCurrencyInput(collectedInput)
   ) {
+    return;
+  }
+
+  // Validate that collected is not less than subtotal
+  if (!validateCollectedVsSubtotal()) {
     return;
   }
 
