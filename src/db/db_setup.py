@@ -42,6 +42,7 @@ def create_database():
             order_subtotal REAL NOT NULL,
             amount_collected REAL NOT NULL,
             tip REAL NOT NULL,
+            additional_cash_tip REAL DEFAULT 0.0,
             FOREIGN KEY (driver_id) REFERENCES drivers (id)
         )
     """)

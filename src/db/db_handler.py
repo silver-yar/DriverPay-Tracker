@@ -173,7 +173,7 @@ class DBHandler(QObject):
     def get_deliveries(self, driver_id, start_date="", end_date=""):
         cursor = self.conn.cursor()
         query = """
-           SELECT id, date, order_num, payment_type, order_subtotal, amount_collected, tip
+           SELECT id, date, order_num, payment_type, order_subtotal, amount_collected, tip, additional_cash_tip
            FROM deliveries WHERE driver_id = ?
         """
         params = [driver_id]
@@ -194,6 +194,7 @@ class DBHandler(QObject):
                     "order_subtotal": f"${row['order_subtotal']:.2f}",
                     "amount_collected": f"${row['amount_collected']:.2f}",
                     "tip": f"${row['tip']:.2f}",
+                    "additional_cash_tip": row["additional_cash_tip"] or 0,
                 }
             )
         return json.dumps(result)
@@ -203,7 +204,7 @@ class DBHandler(QObject):
         cursor = self.conn.cursor()
         cursor.execute(
             """
-               SELECT id, driver_id, date, order_num, payment_type, order_subtotal, amount_collected, tip
+               SELECT id, driver_id, date, order_num, payment_type, order_subtotal, amount_collected, tip, additional_cash_tip
                FROM deliveries WHERE id = ?
            """,
             (delivery_id,),
@@ -243,7 +244,7 @@ class DBHandler(QObject):
 
         return errors
 
-    @Slot(str, str, str, str, float, float, float, result=str)
+    @Slot(str, str, str, str, float, float, float, float, result=str)
     def add_delivery(
         self,
         driver_id,
@@ -253,6 +254,7 @@ class DBHandler(QObject):
         order_subtotal,
         amount_collected,
         tip,
+        additional_cash_tip=0,
     ):
         # Validate inputs
         errors = self._validate_delivery_amounts(order_subtotal, amount_collected)
@@ -262,8 +264,8 @@ class DBHandler(QObject):
         cursor = self.conn.cursor()
         cursor.execute(
             """
-               INSERT INTO deliveries (driver_id, date, order_num, payment_type, order_subtotal, amount_collected, tip)
-               VALUES (?, ?, ?, ?, ?, ?, ?)
+               INSERT INTO deliveries (driver_id, date, order_num, payment_type, order_subtotal, amount_collected, tip, additional_cash_tip)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)
            """,
             (
                 driver_id,
@@ -273,12 +275,13 @@ class DBHandler(QObject):
                 order_subtotal,
                 amount_collected,
                 tip,
+                additional_cash_tip,
             ),
         )
         self.conn.commit()
         return json.dumps({"success": True})
 
-    @Slot(str, str, str, str, float, float, float, result=str)
+    @Slot(str, str, str, str, float, float, float, float, result=str)
     def update_delivery(
         self,
         delivery_id,
@@ -288,6 +291,7 @@ class DBHandler(QObject):
         order_subtotal,
         amount_collected,
         tip,
+        additional_cash_tip=0,
     ):
         # Validate inputs
         errors = self._validate_delivery_amounts(order_subtotal, amount_collected)
@@ -297,7 +301,7 @@ class DBHandler(QObject):
         cursor = self.conn.cursor()
         cursor.execute(
             """
-               UPDATE deliveries SET date = ?, order_num = ?, payment_type = ?, order_subtotal = ?, amount_collected = ?, tip = ?
+               UPDATE deliveries SET date = ?, order_num = ?, payment_type = ?, order_subtotal = ?, amount_collected = ?, tip = ?, additional_cash_tip = ?
                WHERE id = ?
            """,
             (
@@ -307,6 +311,7 @@ class DBHandler(QObject):
                 order_subtotal,
                 amount_collected,
                 tip,
+                additional_cash_tip,
                 delivery_id,
             ),
         )
@@ -327,6 +332,7 @@ class DBHandler(QObject):
                SUM(order_subtotal) as total_subtotal,
                SUM(amount_collected) as total_collected,
                SUM(tip) as total_tips,
+               SUM(additional_cash_tip) as total_additional_tips,
                COUNT(*) as delivery_count
            FROM deliveries WHERE driver_id = ?
         """
@@ -341,6 +347,7 @@ class DBHandler(QObject):
                 "total_subtotal": row["total_subtotal"] or 0,
                 "total_collected": row["total_collected"] or 0,
                 "total_tips": row["total_tips"] or 0,
+                "total_additional_tips": row["total_additional_tips"] or 0,
                 "delivery_count": row["delivery_count"] or 0,
             }
         )

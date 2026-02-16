@@ -45,6 +45,7 @@ def setup_database(conn):
             order_subtotal REAL NOT NULL,
             amount_collected REAL NOT NULL,
             tip REAL NOT NULL,
+            additional_cash_tip REAL DEFAULT 0.0,
             FOREIGN KEY (driver_id) REFERENCES drivers (id)
         )
     """)
@@ -59,13 +60,13 @@ def setup_database(conn):
     )
     # Sample delivery data
     cursor.execute(
-        "INSERT INTO deliveries (driver_id, date, order_num, payment_type, order_subtotal, amount_collected, tip) VALUES (1, '2023-01-01', '#1001', 'Credit', 25.00, 30.00, 5.00)"
+        "INSERT INTO deliveries (driver_id, date, order_num, payment_type, order_subtotal, amount_collected, tip, additional_cash_tip) VALUES (1, '2023-01-01', '#1001', 'Credit', 25.00, 30.00, 5.00, 2.00)"
     )
     cursor.execute(
-        "INSERT INTO deliveries (driver_id, date, order_num, payment_type, order_subtotal, amount_collected, tip) VALUES (1, '2023-01-02', '#1002', 'Cash', 40.00, 45.00, 5.00)"
+        "INSERT INTO deliveries (driver_id, date, order_num, payment_type, order_subtotal, amount_collected, tip, additional_cash_tip) VALUES (1, '2023-01-02', '#1002', 'Cash', 40.00, 45.00, 5.00, 0.00)"
     )
     cursor.execute(
-        "INSERT INTO deliveries (driver_id, date, order_num, payment_type, order_subtotal, amount_collected, tip) VALUES (2, '2023-01-01', '#2001', 'Debit', 18.50, 22.00, 3.50)"
+        "INSERT INTO deliveries (driver_id, date, order_num, payment_type, order_subtotal, amount_collected, tip, additional_cash_tip) VALUES (2, '2023-01-01', '#2001', 'Debit', 18.50, 22.00, 3.50, 1.50)"
     )
     conn.commit()
 

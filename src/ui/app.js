@@ -138,11 +138,13 @@ function loadDeliveries() {
         const collected = parseFloat(
           delivery.amount_collected.replace("$", ""),
         );
-        const total = (subtotal + tip).toFixed(2);
+        const additionalCashTip = delivery.additional_cash_tip || 0;
+        const totalTip = tip + additionalCashTip;
+        const total = (subtotal + totalTip).toFixed(2);
         // Calculate tip percentage based on amount collected
         let tipPercent = 0;
         if (collected > 0) {
-          tipPercent = (tip / collected) * 100;
+          tipPercent = (totalTip / collected) * 100;
         }
         const row = document.createElement("tr");
         row.innerHTML = `
@@ -168,15 +170,17 @@ function loadDeliveriesSummary() {
     (summaryJson) => {
       const summary = JSON.parse(summaryJson);
       const cards = document.getElementById("delivery-summary-cards");
+      const totalTipsWithAdditional =
+        summary.total_tips + summary.total_additional_tips;
       const avgTip =
         summary.delivery_count > 0
-          ? summary.total_tips / summary.delivery_count
+          ? totalTipsWithAdditional / summary.delivery_count
           : 0;
       cards.innerHTML = `
             <div class="card green">Deliveries<br><strong>${summary.delivery_count}</strong></div>
             <div class="card green">Total Subtotal<br><strong>$${summary.total_subtotal.toFixed(2)}</strong></div>
             <div class="card green">Total Collected<br><strong>$${summary.total_collected.toFixed(2)}</strong></div>
-            <div class="card green">Total Tips<br><strong>$${summary.total_tips.toFixed(2)}</strong></div>
+            <div class="card green">Total Tips<br><strong>$${totalTipsWithAdditional.toFixed(2)}</strong></div>
             <div class="card green">Avg Tip<br><strong>$${avgTip.toFixed(2)}</strong></div>
         `;
     },
@@ -361,16 +365,45 @@ function calculateTip() {
     parseFloat(document.getElementById("delivery-subtotal").value) || 0;
   const collected =
     parseFloat(document.getElementById("delivery-collected").value) || 0;
-  const tip = collected - subtotal;
-  document.getElementById("delivery-tip").value = tip.toFixed(2);
+  const baseTip = collected - subtotal;
+
+  // Get additional cash tip if enabled
+  const additionalTipInput = document.getElementById(
+    "delivery-additional-cash-tip",
+  );
+  let additionalTip = 0;
+  if (!additionalTipInput.disabled) {
+    additionalTip = parseFloat(additionalTipInput.value) || 0;
+  }
+
+  const totalTip = baseTip + additionalTip;
+  document.getElementById("delivery-tip").value = totalTip.toFixed(2);
 
   // Calculate tip percentage based on amount collected
   let tipPercent = 0;
   if (collected > 0) {
-    tipPercent = (tip / collected) * 100;
+    tipPercent = (totalTip / collected) * 100;
   }
   document.getElementById("delivery-tip-percent").value =
     tipPercent.toFixed(1) + "%";
+}
+
+function toggleAdditionalCashTipField() {
+  const paymentType = document.getElementById("delivery-payment-type").value;
+  const additionalTipInput = document.getElementById(
+    "delivery-additional-cash-tip",
+  );
+
+  // Enable additional cash tip only for Credit or Debit
+  if (paymentType === "Credit" || paymentType === "Debit") {
+    additionalTipInput.disabled = false;
+    additionalTipInput.style.background = "#ffffff";
+  } else {
+    additionalTipInput.disabled = true;
+    additionalTipInput.value = "";
+    additionalTipInput.style.background = "#e0e0e0";
+  }
+  calculateTip();
 }
 
 document.getElementById("add-delivery-btn").addEventListener("click", () => {
@@ -385,6 +418,10 @@ document.getElementById("add-delivery-btn").addEventListener("click", () => {
     document.querySelector(".driver-list .active").textContent;
   document.getElementById("delivery-id").value = "";
   document.getElementById("add-delivery-form").reset();
+
+  // Reset additional cash tip field state
+  toggleAdditionalCashTipField();
+
   document.getElementById("add-delivery-modal").style.display = "block";
 });
 
@@ -393,6 +430,9 @@ document
   .addEventListener("input", calculateTip);
 document
   .getElementById("delivery-collected")
+  .addEventListener("input", calculateTip);
+document
+  .getElementById("delivery-additional-cash-tip")
   .addEventListener("input", calculateTip);
 
 // Add validation listeners for currency fields
@@ -410,6 +450,17 @@ document
     validateCollectedVsSubtotal();
     calculateTip();
   });
+document
+  .getElementById("delivery-additional-cash-tip")
+  .addEventListener("blur", function () {
+    validateCurrencyInput(this);
+    calculateTip();
+  });
+
+// Add payment type change listener
+document
+  .getElementById("delivery-payment-type")
+  .addEventListener("change", toggleAdditionalCashTipField);
 
 document.getElementById("add-delivery-form").addEventListener("submit", (e) => {
   e.preventDefault();
@@ -437,6 +488,14 @@ document.getElementById("add-delivery-form").addEventListener("submit", (e) => {
   const collected = parseFloat(collectedInput.value);
   const tip = parseFloat(document.getElementById("delivery-tip").value);
 
+  // Get additional cash tip (0 if disabled)
+  const additionalTipInput = document.getElementById(
+    "delivery-additional-cash-tip",
+  );
+  const additionalCashTip = additionalTipInput.disabled
+    ? 0
+    : parseFloat(additionalTipInput.value) || 0;
+
   // Additional validation: ensure values are non-negative
   if (subtotal < 0 || collected < 0) {
     alert("Subtotal and Amount Collected must be non-negative values.");
@@ -452,6 +511,7 @@ document.getElementById("add-delivery-form").addEventListener("submit", (e) => {
       subtotal,
       collected,
       tip,
+      additionalCashTip,
     );
   } else {
     db.add_delivery(
@@ -462,6 +522,7 @@ document.getElementById("add-delivery-form").addEventListener("submit", (e) => {
       subtotal,
       collected,
       tip,
+      additionalCashTip,
     );
   }
   deliveryModalMode = "add";
@@ -544,6 +605,14 @@ document.getElementById("edit-delivery-btn").addEventListener("click", () => {
       delivery.order_subtotal;
     document.getElementById("delivery-collected").value =
       delivery.amount_collected;
+
+    // Set additional cash tip and toggle field
+    const additionalTipInput = document.getElementById(
+      "delivery-additional-cash-tip",
+    );
+    additionalTipInput.value = delivery.additional_cash_tip || "";
+    toggleAdditionalCashTipField();
+
     calculateTip();
     document.getElementById("add-delivery-modal").style.display = "block";
   });
