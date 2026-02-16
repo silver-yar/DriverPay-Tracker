@@ -210,3 +210,71 @@ def test_get_deliveries_summary(db_handler):
     assert summary_dict["total_subtotal"] == 65.00
     assert summary_dict["total_collected"] == 75.00
     assert summary_dict["total_tips"] == 10.00
+
+
+def test_add_delivery_negative_subtotal(db_handler):
+    import json
+
+    result = db_handler.add_delivery(
+        1, "2023-01-03", "#1003", "Cash", -10.00, 15.00, 5.00
+    )
+    result_dict = json.loads(result)
+    assert result_dict["success"] == False
+    assert "subtotal cannot be negative" in str(result_dict["errors"])
+
+
+def test_add_delivery_negative_collected(db_handler):
+    import json
+
+    result = db_handler.add_delivery(
+        1, "2023-01-03", "#1003", "Cash", 10.00, -5.00, -15.00
+    )
+    result_dict = json.loads(result)
+    assert result_dict["success"] == False
+    assert "collected cannot be negative" in str(result_dict["errors"])
+
+
+def test_add_delivery_too_many_decimals(db_handler):
+    import json
+
+    result = db_handler.add_delivery(
+        1, "2023-01-03", "#1003", "Cash", 10.999, 15.00, 4.001
+    )
+    result_dict = json.loads(result)
+    assert result_dict["success"] == False
+    assert "more than 2 decimal places" in str(result_dict["errors"])
+
+
+def test_add_delivery_valid_values(db_handler):
+    import json
+
+    result = db_handler.add_delivery(
+        1, "2023-01-03", "#1003", "Credit", 25.50, 32.75, 7.25
+    )
+    result_dict = json.loads(result)
+    assert result_dict["success"] == True
+
+
+def test_update_delivery_validation(db_handler):
+    import json
+
+    # Test update with negative value
+    result = db_handler.update_delivery(
+        1, "2023-01-01", "#1001", "Cash", -5.00, 10.00, 15.00
+    )
+    result_dict = json.loads(result)
+    assert result_dict["success"] == False
+
+    # Test update with too many decimals
+    result = db_handler.update_delivery(
+        1, "2023-01-01", "#1001", "Cash", 25.123, 30.00, 4.877
+    )
+    result_dict = json.loads(result)
+    assert result_dict["success"] == False
+
+    # Test update with valid values
+    result = db_handler.update_delivery(
+        1, "2023-01-01", "#1001", "Debit", 26.00, 31.50, 5.50
+    )
+    result_dict = json.loads(result)
+    assert result_dict["success"] == True
