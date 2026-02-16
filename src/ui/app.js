@@ -133,10 +133,17 @@ function loadDeliveries() {
       const table = document.getElementById("delivery-table");
       table.innerHTML = "";
       deliveries.forEach((delivery) => {
-        const total = (
-          parseFloat(delivery.order_subtotal.replace("$", "")) +
-          parseFloat(delivery.tip.replace("$", ""))
-        ).toFixed(2);
+        const subtotal = parseFloat(delivery.order_subtotal.replace("$", ""));
+        const tip = parseFloat(delivery.tip.replace("$", ""));
+        const collected = parseFloat(
+          delivery.amount_collected.replace("$", ""),
+        );
+        const total = (subtotal + tip).toFixed(2);
+        // Calculate tip percentage based on amount collected
+        let tipPercent = 0;
+        if (collected > 0) {
+          tipPercent = (tip / collected) * 100;
+        }
         const row = document.createElement("tr");
         row.innerHTML = `
                 <td><input type="checkbox" data-id="${delivery.id}"></td>
@@ -146,6 +153,7 @@ function loadDeliveries() {
                 <td>${delivery.order_subtotal}</td>
                 <td>${delivery.amount_collected}</td>
                 <td class="green">${delivery.tip}</td>
+                <td>${tipPercent.toFixed(1)}%</td>
                 <td><strong>$${total}</strong></td>
             `;
         table.appendChild(row);
@@ -323,6 +331,14 @@ function calculateTip() {
     parseFloat(document.getElementById("delivery-collected").value) || 0;
   const tip = collected - subtotal;
   document.getElementById("delivery-tip").value = tip.toFixed(2);
+
+  // Calculate tip percentage based on amount collected
+  let tipPercent = 0;
+  if (collected > 0) {
+    tipPercent = (tip / collected) * 100;
+  }
+  document.getElementById("delivery-tip-percent").value =
+    tipPercent.toFixed(1) + "%";
 }
 
 document.getElementById("add-delivery-btn").addEventListener("click", () => {
