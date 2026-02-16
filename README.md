@@ -44,6 +44,11 @@ DriverPay Tracker is a desktop application designed to help delivery drivers acc
    pip install -r requirements.txt
    ```
 
+5. Build the database:
+   ```bash
+   python src/db/db_setup.py
+   ```
+
 ## Running the Application
 
 1. Ensure the virtual environment is activated.
@@ -62,7 +67,7 @@ DriverPay Tracker is a desktop application designed to help delivery drivers acc
 
 ## Database Setup
 
-The application uses SQLite for data storage. On first run, the database file `src/driver_pay_tracker.db` will be created with sample data.
+The application uses SQLite for data storage. The database file `src/driver_pay_tracker.db` is created by running `src/db/db_setup.py`. This script creates the necessary tables (drivers, shifts, deliveries) and populates them with sample data.
 
 ## Testing
 
