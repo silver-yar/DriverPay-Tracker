@@ -214,7 +214,32 @@ class DBHandler(QObject):
         else:
             return json.dumps({})
 
-    @Slot(str, str, str, str, float, float, float)
+    def _validate_delivery_amounts(self, order_subtotal, amount_collected):
+        """Validate delivery amounts: non-negative and max 2 decimal places."""
+        errors = []
+
+        # Check for non-negative values
+        if order_subtotal < 0:
+            errors.append("Order subtotal cannot be negative.")
+        if amount_collected < 0:
+            errors.append("Amount collected cannot be negative.")
+
+        # Check for maximum 2 decimal places
+        def has_more_than_2_decimals(value):
+            str_value = str(value)
+            if "." in str_value:
+                decimals = len(str_value.split(".")[1])
+                return decimals > 2
+            return False
+
+        if has_more_than_2_decimals(order_subtotal):
+            errors.append("Order subtotal cannot have more than 2 decimal places.")
+        if has_more_than_2_decimals(amount_collected):
+            errors.append("Amount collected cannot have more than 2 decimal places.")
+
+        return errors
+
+    @Slot(str, str, str, str, float, float, float, result=str)
     def add_delivery(
         self,
         driver_id,
@@ -225,6 +250,11 @@ class DBHandler(QObject):
         amount_collected,
         tip,
     ):
+        # Validate inputs
+        errors = self._validate_delivery_amounts(order_subtotal, amount_collected)
+        if errors:
+            return json.dumps({"success": False, "errors": errors})
+
         cursor = self.conn.cursor()
         cursor.execute(
             """
@@ -242,8 +272,9 @@ class DBHandler(QObject):
             ),
         )
         self.conn.commit()
+        return json.dumps({"success": True})
 
-    @Slot(str, str, str, str, float, float, float)
+    @Slot(str, str, str, str, float, float, float, result=str)
     def update_delivery(
         self,
         delivery_id,
@@ -254,6 +285,11 @@ class DBHandler(QObject):
         amount_collected,
         tip,
     ):
+        # Validate inputs
+        errors = self._validate_delivery_amounts(order_subtotal, amount_collected)
+        if errors:
+            return json.dumps({"success": False, "errors": errors})
+
         cursor = self.conn.cursor()
         cursor.execute(
             """
@@ -271,6 +307,7 @@ class DBHandler(QObject):
             ),
         )
         self.conn.commit()
+        return json.dumps({"success": True})
 
     @Slot(str)
     def delete_delivery(self, delivery_id):

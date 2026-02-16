@@ -324,6 +324,25 @@ document.getElementById("edit-shift-btn").addEventListener("click", () => {
 });
 
 // Delivery Modal Handlers
+function validateCurrencyInput(input) {
+  const value = parseFloat(input.value);
+
+  // Check for negative values
+  if (value < 0) {
+    input.value = "";
+    alert("Value cannot be negative.");
+    return false;
+  }
+
+  // Check for more than 2 decimal places
+  const decimalMatch = input.value.match(/^\d+(\.\d{0,2})?$/);
+  if (!decimalMatch && input.value !== "") {
+    input.value = parseFloat(input.value).toFixed(2);
+  }
+
+  return true;
+}
+
 function calculateTip() {
   const subtotal =
     parseFloat(document.getElementById("delivery-subtotal").value) || 0;
@@ -363,18 +382,46 @@ document
   .getElementById("delivery-collected")
   .addEventListener("input", calculateTip);
 
+// Add validation listeners for currency fields
+document
+  .getElementById("delivery-subtotal")
+  .addEventListener("blur", function () {
+    validateCurrencyInput(this);
+    calculateTip();
+  });
+document
+  .getElementById("delivery-collected")
+  .addEventListener("blur", function () {
+    validateCurrencyInput(this);
+    calculateTip();
+  });
+
 document.getElementById("add-delivery-form").addEventListener("submit", (e) => {
   e.preventDefault();
+
+  // Validate subtotal and collected before submission
+  const subtotalInput = document.getElementById("delivery-subtotal");
+  const collectedInput = document.getElementById("delivery-collected");
+
+  if (
+    !validateCurrencyInput(subtotalInput) ||
+    !validateCurrencyInput(collectedInput)
+  ) {
+    return;
+  }
+
   const date = document.getElementById("delivery-date").value;
   const orderNum = document.getElementById("delivery-order-num").value;
   const paymentType = document.getElementById("delivery-payment-type").value;
-  const subtotal = parseFloat(
-    document.getElementById("delivery-subtotal").value,
-  );
-  const collected = parseFloat(
-    document.getElementById("delivery-collected").value,
-  );
+  const subtotal = parseFloat(subtotalInput.value);
+  const collected = parseFloat(collectedInput.value);
   const tip = parseFloat(document.getElementById("delivery-tip").value);
+
+  // Additional validation: ensure values are non-negative
+  if (subtotal < 0 || collected < 0) {
+    alert("Subtotal and Amount Collected must be non-negative values.");
+    return;
+  }
 
   if (deliveryModalMode === "edit") {
     db.update_delivery(
