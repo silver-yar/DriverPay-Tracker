@@ -146,6 +146,9 @@ function loadDeliveries() {
         if (collected > 0) {
           tipPercent = (totalTip / collected) * 100;
         }
+        const additionalCashTipDisplay = delivery.additional_cash_tip
+          ? `$${parseFloat(delivery.additional_cash_tip).toFixed(2)}`
+          : "-";
         const row = document.createElement("tr");
         row.innerHTML = `
                 <td><input type="checkbox" data-id="${delivery.id}"></td>
@@ -155,6 +158,7 @@ function loadDeliveries() {
                 <td>${delivery.order_subtotal}</td>
                 <td>${delivery.amount_collected}</td>
                 <td class="green">${delivery.tip}</td>
+                <td>${additionalCashTipDisplay}</td>
                 <td>${tipPercent.toFixed(1)}%</td>
                 <td><strong>$${total}</strong></td>
             `;
@@ -348,10 +352,21 @@ function validateCurrencyInput(input) {
 }
 
 function validateCollectedVsSubtotal() {
-  const subtotal =
-    parseFloat(document.getElementById("delivery-subtotal").value) || 0;
-  const collected =
-    parseFloat(document.getElementById("delivery-collected").value) || 0;
+  const subtotalInput = document.getElementById("delivery-subtotal").value;
+  const collectedInput = document.getElementById("delivery-collected").value;
+
+  // Don't validate if either field is empty
+  if (!subtotalInput || !collectedInput) {
+    return true;
+  }
+
+  const subtotal = parseFloat(subtotalInput);
+  const collected = parseFloat(collectedInput);
+
+  // Don't validate if values are not valid numbers
+  if (isNaN(subtotal) || isNaN(collected)) {
+    return true;
+  }
 
   if (collected < subtotal) {
     alert("Amount collected cannot be less than order subtotal.");
@@ -440,14 +455,12 @@ document
   .getElementById("delivery-subtotal")
   .addEventListener("blur", function () {
     validateCurrencyInput(this);
-    validateCollectedVsSubtotal();
     calculateTip();
   });
 document
   .getElementById("delivery-collected")
   .addEventListener("blur", function () {
     validateCurrencyInput(this);
-    validateCollectedVsSubtotal();
     calculateTip();
   });
 document
