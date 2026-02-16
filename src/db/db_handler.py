@@ -168,3 +168,138 @@ class DBHandler(QObject):
                 "avg_hourly": row["avg_hourly"] or 0,
             }
         )
+
+    @Slot(str, str, str, result=str)
+    def get_deliveries(self, driver_id, start_date="", end_date=""):
+        cursor = self.conn.cursor()
+        query = """
+           SELECT id, date, order_num, payment_type, order_subtotal, amount_collected, tip
+           FROM deliveries WHERE driver_id = ?
+        """
+        params = [driver_id]
+        if start_date and end_date:
+            query += " AND date BETWEEN ? AND ?"
+            params.extend([start_date, end_date])
+        query += " ORDER BY date DESC"
+        cursor.execute(query, params)
+        deliveries = cursor.fetchall()
+        result = []
+        for row in deliveries:
+            result.append(
+                {
+                    "id": row["id"],
+                    "date": row["date"],
+                    "order_num": row["order_num"] or "",
+                    "payment_type": row["payment_type"],
+                    "order_subtotal": f"${row['order_subtotal']:.2f}",
+                    "amount_collected": f"${row['amount_collected']:.2f}",
+                    "tip": f"${row['tip']:.2f}",
+                }
+            )
+        return json.dumps(result)
+
+    @Slot(str, result=str)
+    def get_delivery(self, delivery_id):
+        cursor = self.conn.cursor()
+        cursor.execute(
+            """
+               SELECT id, driver_id, date, order_num, payment_type, order_subtotal, amount_collected, tip
+               FROM deliveries WHERE id = ?
+           """,
+            (delivery_id,),
+        )
+        row = cursor.fetchone()
+        if row:
+            return json.dumps(dict(row))
+        else:
+            return json.dumps({})
+
+    @Slot(str, str, str, str, float, float, float)
+    def add_delivery(
+        self,
+        driver_id,
+        date,
+        order_num,
+        payment_type,
+        order_subtotal,
+        amount_collected,
+        tip,
+    ):
+        cursor = self.conn.cursor()
+        cursor.execute(
+            """
+               INSERT INTO deliveries (driver_id, date, order_num, payment_type, order_subtotal, amount_collected, tip)
+               VALUES (?, ?, ?, ?, ?, ?, ?)
+           """,
+            (
+                driver_id,
+                date,
+                order_num,
+                payment_type,
+                order_subtotal,
+                amount_collected,
+                tip,
+            ),
+        )
+        self.conn.commit()
+
+    @Slot(str, str, str, str, float, float, float)
+    def update_delivery(
+        self,
+        delivery_id,
+        date,
+        order_num,
+        payment_type,
+        order_subtotal,
+        amount_collected,
+        tip,
+    ):
+        cursor = self.conn.cursor()
+        cursor.execute(
+            """
+               UPDATE deliveries SET date = ?, order_num = ?, payment_type = ?, order_subtotal = ?, amount_collected = ?, tip = ?
+               WHERE id = ?
+           """,
+            (
+                date,
+                order_num,
+                payment_type,
+                order_subtotal,
+                amount_collected,
+                tip,
+                delivery_id,
+            ),
+        )
+        self.conn.commit()
+
+    @Slot(str)
+    def delete_delivery(self, delivery_id):
+        cursor = self.conn.cursor()
+        cursor.execute("DELETE FROM deliveries WHERE id = ?", (delivery_id,))
+        self.conn.commit()
+
+    @Slot(str, str, str, result=str)
+    def get_deliveries_summary(self, driver_id, start_date="", end_date=""):
+        cursor = self.conn.cursor()
+        query = """
+           SELECT
+               SUM(order_subtotal) as total_subtotal,
+               SUM(amount_collected) as total_collected,
+               SUM(tip) as total_tips,
+               COUNT(*) as delivery_count
+           FROM deliveries WHERE driver_id = ?
+        """
+        params = [driver_id]
+        if start_date and end_date:
+            query += " AND date BETWEEN ? AND ?"
+            params.extend([start_date, end_date])
+        cursor.execute(query, params)
+        row = cursor.fetchone()
+        return json.dumps(
+            {
+                "total_subtotal": row["total_subtotal"] or 0,
+                "total_collected": row["total_collected"] or 0,
+                "total_tips": row["total_tips"] or 0,
+                "delivery_count": row["delivery_count"] or 0,
+            }
+        )

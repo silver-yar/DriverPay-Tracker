@@ -32,6 +32,20 @@ def create_database():
         )
     """)
 
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS deliveries (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            driver_id INTEGER NOT NULL,
+            date TEXT NOT NULL,
+            order_num TEXT,
+            payment_type TEXT NOT NULL,
+            order_subtotal REAL NOT NULL,
+            amount_collected REAL NOT NULL,
+            tip REAL NOT NULL,
+            FOREIGN KEY (driver_id) REFERENCES drivers (id)
+        )
+    """)
+
     # Sample data
     cursor.execute("INSERT OR IGNORE INTO drivers (name) VALUES ('John Smith')")
     cursor.execute("INSERT OR IGNORE INTO drivers (name) VALUES ('Sarah Davis')")
