@@ -21,12 +21,12 @@ view.load(QUrl.fromLocalFile(str(html_path)))
 
 view.page().setWebChannel(channel)
 
-# Enable developer tools for debugging
-dev_tools = QWebEngineView()
-view.page().setDevToolsPage(dev_tools.page())
-dev_tools.setWindowTitle("Dev Tools")
-dev_tools.resize(800, 600)
-dev_tools.show()
+# Enable developer tools for debugging (commented out for production)
+# dev_tools = QWebEngineView()
+# view.page().setDevToolsPage(dev_tools.page())
+# dev_tools.setWindowTitle("Dev Tools")
+# dev_tools.resize(800, 600)
+# dev_tools.show()
 
 view.setWindowTitle("DriverPay-Tracker")
 view.resize(1200, 800)
