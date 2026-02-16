@@ -9,148 +9,111 @@
         <div class="app-container">
             <aside class="sidebar">
                 <h2>Driver Selection</h2>
-
                 <label>Date Range</label>
                 <input type="date" id="start-date" />
                 <input type="date" id="end-date" />
-
                 <button id="search-btn">Search</button>
-
                 <h3>Drivers</h3>
-                <ul class="driver-list" id="driver-list">
-                    <!-- Drivers loaded dynamically -->
-                </ul>
+                <ul class="driver-list" id="driver-list"></ul>
             </aside>
-
             <main class="content">
-                <h1>Shift Records</h1>
-
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Select</th>
-                            <th>Date</th>
-                            <th>Start</th>
-                            <th>End</th>
-                            <th>Mileage</th>
-                            <th>Cash Tips</th>
-                            <th>Credit Tips</th>
-                            <th>Owed</th>
-                            <th>Hourly</th>
-                        </tr>
-                    </thead>
-                    <tbody id="shift-table"></tbody>
-                </table>
-
-                <div class="buttons">
-                    <button id="add-shift-btn">Add Shift</button>
-                    <button id="edit-shift-btn">Edit Shift</button>
-                    <button id="delete-shift-btn" class="danger">
-                        Delete Shift
-                    </button>
+                <div class="tabs">
+                    <button class="tab-button active" id="shifts-tab-btn">Shifts</button>
+                    <button class="tab-button" id="deliveries-tab-btn">Deliveries</button>
                 </div>
-
-                <div class="summary-cards" id="summary-cards">
-                    <!-- Summary loaded dynamically -->
+                <div id="shifts-section" class="tab-content active">
+                    <h1>Shift Records</h1>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Select</th>
+                                <th>Date</th>
+                                <th>Start</th>
+                                <th>End</th>
+                                <th>Mileage</th>
+                                <th>Cash Tips</th>
+                                <th>Credit Tips</th>
+                                <th>Owed</th>
+                                <th>Hourly</th>
+                            </tr>
+                        </thead>
+                        <tbody id="shift-table"></tbody>
+                    </table>
+                    <div class="buttons">
+                        <button id="add-shift-btn">Add Shift</button>
+                        <button id="edit-shift-btn">Edit Shift</button>
+                        <button id="delete-shift-btn" class="danger">Delete Shift</button>
+                    </div>
+                    <div class="summary-cards" id="summary-cards"></div>
+                </div>
+                <div id="deliveries-section" class="tab-content">
+                    <h1>Delivery Records</h1>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Select</th>
+                                <th>Date</th>
+                                <th>Order #</th>
+                                <th>Payment Type</th>
+                                <th>Subtotal</th>
+                                <th>Amount Collected</th>
+                                <th>Tip</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody id="delivery-table"></tbody>
+                    </table>
+                    <div class="buttons">
+                        <button id="add-delivery-btn">Add Delivery</button>
+                        <button id="edit-delivery-btn">Edit Delivery</button>
+                        <button id="delete-delivery-btn" class="danger">Delete Delivery</button>
+                    </div>
+                    <div class="summary-cards" id="delivery-summary-cards"></div>
                 </div>
             </main>
-
-            <div
-                id="add-shift-modal"
-                style="
-                    display: none;
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    background: rgba(0, 0, 0, 0.5);
-                    z-index: 1000;
-                "
-            >
-                <div
-                    style="
-                        position: absolute;
-                        top: 50%;
-                        left: 50%;
-                        transform: translate(-50%, -50%);
-                        background: white;
-                        padding: 20px;
-                        border-radius: 5px;
-                        width: 400px;
-                    "
-                >
+            <div id="add-shift-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;">
+                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:20px;border-radius:5px;width:400px;">
                     <h2 id="modal-title">Add New Shift</h2>
                     <form id="add-shift-form">
-                        <label
-                            >Driver: <span id="modal-driver-name"></span></label
-                        ><br /><br />
+                        <label>Driver: <span id="modal-driver-name"></span></label><br /><br />
                         <input type="hidden" id="shift-id" value="" />
-                        <label
-                            >Date:
-                            <input
-                                type="date"
-                                id="shift-date"
-                                required /></label
-                        ><br /><br />
-                        <label
-                            >Start Time:
-                            <input
-                                type="time"
-                                id="shift-start"
-                                required /></label
-                        ><br /><br />
-                        <label
-                            >End Time:
-                            <input type="time" id="shift-end" required /></label
-                        ><br /><br />
-                        <label
-                            >Mileage:
-                            <input
-                                type="number"
-                                step="0.1"
-                                id="shift-mileage"
-                                required /></label
-                        ><br /><br />
-                        <label
-                            >Cash Tips:
-                            <input
-                                type="number"
-                                step="0.01"
-                                id="shift-cash"
-                                required /></label
-                        ><br /><br />
-                        <label
-                            >Credit Tips:
-                            <input
-                                type="number"
-                                step="0.01"
-                                id="shift-credit"
-                                required /></label
-                        ><br /><br />
-                        <label
-                            >Owed:
-                            <input
-                                type="number"
-                                step="0.01"
-                                id="shift-owed"
-                                required /></label
-                        ><br /><br />
-                        <label
-                            >Hourly Rate:
-                            <input
-                                type="number"
-                                step="0.01"
-                                id="shift-hourly"
-                                required /></label
-                        ><br /><br />
+                        <label>Date: <input type="date" id="shift-date" required /></label><br /><br />
+                        <label>Start Time: <input type="time" id="shift-start" required /></label><br /><br />
+                        <label>End Time: <input type="time" id="shift-end" required /></label><br /><br />
+                        <label>Mileage: <input type="number" step="0.1" id="shift-mileage" required /></label><br /><br />
+                        <label>Cash Tips: <input type="number" step="0.01" id="shift-cash" required /></label><br /><br />
+                        <label>Credit Tips: <input type="number" step="0.01" id="shift-credit" required /></label><br /><br />
+                        <label>Owed: <input type="number" step="0.01" id="shift-owed" required /></label><br /><br />
+                        <label>Hourly Rate: <input type="number" step="0.01" id="shift-hourly" required /></label><br /><br />
                         <button type="submit">Add Shift</button>
                         <button type="button" id="cancel-add">Cancel</button>
                     </form>
                 </div>
             </div>
+            <div id="add-delivery-modal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:1000;">
+                <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:white;padding:20px;border-radius:5px;width:400px;">
+                    <h2 id="delivery-modal-title">Add New Delivery</h2>
+                    <form id="add-delivery-form">
+                        <label>Driver: <span id="delivery-modal-driver-name"></span></label><br /><br />
+                        <input type="hidden" id="delivery-id" value="" />
+                        <label>Date: <input type="date" id="delivery-date" required /></label><br /><br />
+                        <label>Order Number: <input type="text" id="delivery-order-num" placeholder="e.g., #1234" required /></label><br /><br />
+                        <label>Payment Type:
+                            <select id="delivery-payment-type" required>
+                                <option value="Credit">Credit</option>
+                                <option value="Debit">Debit</option>
+                                <option value="Cash">Cash</option>
+                            </select>
+                        </label><br /><br />
+                        <label>Order Subtotal: <input type="number" step="0.01" id="delivery-subtotal" required /></label><br /><br />
+                        <label>Amount Collected: <input type="number" step="0.01" id="delivery-collected" required /></label><br /><br />
+                        <label>Tip (auto-calculated): <input type="number" step="0.01" id="delivery-tip" readonly style="background:#f0f0f0;" /></label><br /><br />
+                        <button type="submit">Add Delivery</button>
+                        <button type="button" id="cancel-delivery-add">Cancel</button>
+                    </form>
+                </div>
+            </div>
         </div>
-
         <script src="qwebchannel.js"></script>
         <script src="app.js"></script>
     </body>

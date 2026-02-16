@@ -9,6 +9,44 @@ body {
     height: 100vh;
 }
 
+/* Tab Styles */
+.tabs {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 20px;
+    border-bottom: 2px solid #ddd;
+    padding-bottom: 10px;
+}
+
+.tab-button {
+    padding: 10px 20px;
+    border: none;
+    background: #e9eef3;
+    color: #333;
+    cursor: pointer;
+    border-radius: 5px 5px 0 0;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background 0.2s;
+}
+
+.tab-button:hover {
+    background: #d0d8e0;
+}
+
+.tab-button.active {
+    background: #1f4e79;
+    color: white;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
 .sidebar {
     width: 260px;
     background: #1f4e79;
@@ -79,4 +117,14 @@ th {
 .danger {
     background: #e53935;
     color: white;
+}
+
+/* Modal styles for select inputs */
+select {
+    width: 100%;
+    padding: 8px;
+    margin-top: 5px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
 }

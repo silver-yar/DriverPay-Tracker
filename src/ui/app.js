@@ -4,6 +4,9 @@ let startDate = "";
 let endDate = "";
 let modalMode = "add";
 let currentShiftId = null;
+let deliveryModalMode = "add";
+let currentDeliveryId = null;
+let currentTab = "shifts";
 
 console.log("App.js loaded");
 
@@ -39,10 +42,49 @@ function selectDriver(driverId, element) {
   element.classList.add("active");
   document.getElementById("modal-driver-name").textContent =
     element.textContent;
-  loadShifts();
-  loadSummary();
+  document.getElementById("delivery-modal-driver-name").textContent =
+    element.textContent;
+  if (currentTab === "shifts") {
+    loadShifts();
+    loadSummary();
+  } else {
+    loadDeliveries();
+    loadDeliveriesSummary();
+  }
 }
 
+// Tab Switching
+document.getElementById("shifts-tab-btn").addEventListener("click", () => {
+  switchTab("shifts");
+});
+
+document.getElementById("deliveries-tab-btn").addEventListener("click", () => {
+  switchTab("deliveries");
+});
+
+function switchTab(tab) {
+  currentTab = tab;
+  document
+    .querySelectorAll(".tab-button")
+    .forEach((btn) => btn.classList.remove("active"));
+  document
+    .querySelectorAll(".tab-content")
+    .forEach((content) => content.classList.remove("active"));
+
+  if (tab === "shifts") {
+    document.getElementById("shifts-tab-btn").classList.add("active");
+    document.getElementById("shifts-section").classList.add("active");
+    loadShifts();
+    loadSummary();
+  } else {
+    document.getElementById("deliveries-tab-btn").classList.add("active");
+    document.getElementById("deliveries-section").classList.add("active");
+    loadDeliveries();
+    loadDeliveriesSummary();
+  }
+}
+
+// Shifts Functions
 function loadShifts() {
   if (!currentDriverId) return;
   db.get_shifts(currentDriverId, startDate, endDate).then((shiftsJson) => {
@@ -82,13 +124,71 @@ function loadSummary() {
   });
 }
 
+// Deliveries Functions
+function loadDeliveries() {
+  if (!currentDriverId) return;
+  db.get_deliveries(currentDriverId, startDate, endDate).then(
+    (deliveriesJson) => {
+      const deliveries = JSON.parse(deliveriesJson);
+      const table = document.getElementById("delivery-table");
+      table.innerHTML = "";
+      deliveries.forEach((delivery) => {
+        const total = (
+          parseFloat(delivery.order_subtotal.replace("$", "")) +
+          parseFloat(delivery.tip.replace("$", ""))
+        ).toFixed(2);
+        const row = document.createElement("tr");
+        row.innerHTML = `
+                <td><input type="checkbox" data-id="${delivery.id}"></td>
+                <td>${delivery.date}</td>
+                <td>${delivery.order_num || "-"}</td>
+                <td>${delivery.payment_type}</td>
+                <td>${delivery.order_subtotal}</td>
+                <td>${delivery.amount_collected}</td>
+                <td class="green">${delivery.tip}</td>
+                <td><strong>$${total}</strong></td>
+            `;
+        table.appendChild(row);
+      });
+    },
+  );
+}
+
+function loadDeliveriesSummary() {
+  if (!currentDriverId) return;
+  db.get_deliveries_summary(currentDriverId, startDate, endDate).then(
+    (summaryJson) => {
+      const summary = JSON.parse(summaryJson);
+      const cards = document.getElementById("delivery-summary-cards");
+      const avgTip =
+        summary.delivery_count > 0
+          ? summary.total_tips / summary.delivery_count
+          : 0;
+      cards.innerHTML = `
+            <div class="card green">Deliveries<br><strong>${summary.delivery_count}</strong></div>
+            <div class="card green">Total Subtotal<br><strong>$${summary.total_subtotal.toFixed(2)}</strong></div>
+            <div class="card green">Total Collected<br><strong>$${summary.total_collected.toFixed(2)}</strong></div>
+            <div class="card green">Total Tips<br><strong>$${summary.total_tips.toFixed(2)}</strong></div>
+            <div class="card green">Avg Tip<br><strong>$${avgTip.toFixed(2)}</strong></div>
+        `;
+    },
+  );
+}
+
+// Search Button
 document.getElementById("search-btn").addEventListener("click", () => {
   startDate = document.getElementById("start-date").value;
   endDate = document.getElementById("end-date").value;
-  loadShifts();
-  loadSummary();
+  if (currentTab === "shifts") {
+    loadShifts();
+    loadSummary();
+  } else {
+    loadDeliveries();
+    loadDeliveriesSummary();
+  }
 });
 
+// Shift Modal Handlers
 document.getElementById("add-shift-btn").addEventListener("click", () => {
   modalMode = "add";
   currentShiftId = null;
@@ -212,5 +312,156 @@ document.getElementById("edit-shift-btn").addEventListener("click", () => {
     document.getElementById("shift-owed").value = shift.owed;
     document.getElementById("shift-hourly").value = shift.hourly_rate;
     document.getElementById("add-shift-modal").style.display = "block";
+  });
+});
+
+// Delivery Modal Handlers
+function calculateTip() {
+  const subtotal =
+    parseFloat(document.getElementById("delivery-subtotal").value) || 0;
+  const collected =
+    parseFloat(document.getElementById("delivery-collected").value) || 0;
+  const tip = collected - subtotal;
+  document.getElementById("delivery-tip").value = tip.toFixed(2);
+}
+
+document.getElementById("add-delivery-btn").addEventListener("click", () => {
+  deliveryModalMode = "add";
+  currentDeliveryId = null;
+  document.getElementById("delivery-modal-title").textContent =
+    "Add New Delivery";
+  document.querySelector(
+    '#add-delivery-form button[type="submit"]',
+  ).textContent = "Add Delivery";
+  document.getElementById("delivery-modal-driver-name").textContent =
+    document.querySelector(".driver-list .active").textContent;
+  document.getElementById("delivery-id").value = "";
+  document.getElementById("add-delivery-form").reset();
+  document.getElementById("add-delivery-modal").style.display = "block";
+});
+
+document
+  .getElementById("delivery-subtotal")
+  .addEventListener("input", calculateTip);
+document
+  .getElementById("delivery-collected")
+  .addEventListener("input", calculateTip);
+
+document.getElementById("add-delivery-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const date = document.getElementById("delivery-date").value;
+  const orderNum = document.getElementById("delivery-order-num").value;
+  const paymentType = document.getElementById("delivery-payment-type").value;
+  const subtotal = parseFloat(
+    document.getElementById("delivery-subtotal").value,
+  );
+  const collected = parseFloat(
+    document.getElementById("delivery-collected").value,
+  );
+  const tip = parseFloat(document.getElementById("delivery-tip").value);
+
+  if (deliveryModalMode === "edit") {
+    db.update_delivery(
+      currentDeliveryId,
+      date,
+      orderNum,
+      paymentType,
+      subtotal,
+      collected,
+      tip,
+    );
+  } else {
+    db.add_delivery(
+      currentDriverId,
+      date,
+      orderNum,
+      paymentType,
+      subtotal,
+      collected,
+      tip,
+    );
+  }
+  deliveryModalMode = "add";
+  currentDeliveryId = null;
+  document.getElementById("delivery-modal-title").textContent =
+    "Add New Delivery";
+  document.querySelector(
+    '#add-delivery-form button[type="submit"]',
+  ).textContent = "Add Delivery";
+  document.getElementById("delivery-id").value = "";
+  document.getElementById("add-delivery-modal").style.display = "none";
+  document.getElementById("add-delivery-form").reset();
+  loadDeliveries();
+  loadDeliveriesSummary();
+});
+
+document.getElementById("cancel-delivery-add").addEventListener("click", () => {
+  deliveryModalMode = "add";
+  currentDeliveryId = null;
+  document.getElementById("delivery-modal-title").textContent =
+    "Add New Delivery";
+  document.querySelector(
+    '#add-delivery-form button[type="submit"]',
+  ).textContent = "Add Delivery";
+  document.getElementById("delivery-id").value = "";
+  document.getElementById("add-delivery-modal").style.display = "none";
+  document.getElementById("add-delivery-form").reset();
+});
+
+document.getElementById("delete-delivery-btn").addEventListener("click", () => {
+  const checkboxes = document.querySelectorAll(
+    '#delivery-table input[type="checkbox"]:checked',
+  );
+  if (checkboxes.length === 0) {
+    alert("Please select at least one delivery to delete.");
+    return;
+  }
+  if (
+    confirm(`Are you sure you want to delete ${checkboxes.length} delivery(s)?`)
+  ) {
+    checkboxes.forEach((cb) => {
+      db.delete_delivery(cb.dataset.id);
+    });
+    loadDeliveries();
+    loadDeliveriesSummary();
+  }
+});
+
+document.getElementById("edit-delivery-btn").addEventListener("click", () => {
+  const checked = document.querySelectorAll(
+    '#delivery-table input[type="checkbox"]:checked',
+  );
+  if (checked.length !== 1) {
+    alert("Please select exactly one delivery to edit.");
+    return;
+  }
+  const deliveryId = checked[0].dataset.id;
+  db.get_delivery(deliveryId).then((deliveryJson) => {
+    const delivery = JSON.parse(deliveryJson);
+    if (!delivery.id) {
+      alert("Delivery not found.");
+      return;
+    }
+    deliveryModalMode = "edit";
+    currentDeliveryId = deliveryId;
+    document.getElementById("delivery-modal-title").textContent =
+      "Edit Delivery";
+    document.querySelector(
+      '#add-delivery-form button[type="submit"]',
+    ).textContent = "Edit Delivery";
+    document.getElementById("delivery-modal-driver-name").textContent =
+      document.querySelector(".driver-list .active").textContent;
+    document.getElementById("delivery-id").value = delivery.id;
+    document.getElementById("delivery-date").value = delivery.date;
+    document.getElementById("delivery-order-num").value =
+      delivery.order_num || "";
+    document.getElementById("delivery-payment-type").value =
+      delivery.payment_type;
+    document.getElementById("delivery-subtotal").value =
+      delivery.order_subtotal;
+    document.getElementById("delivery-collected").value =
+      delivery.amount_collected;
+    calculateTip();
+    document.getElementById("add-delivery-modal").style.display = "block";
   });
 });
