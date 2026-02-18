@@ -127,4 +127,22 @@ select {
     border: 1px solid #ddd;
     border-radius: 4px;
     font-size: 14px;
+    background: #ffffff;
+    color: #333;
+    transition: border-color 0.2s;
+}
+
+select option {
+    background: #ffffff;
+    color: #333;
+}
+
+select option:checked {
+    background: #ffffff;
+    color: #333;
+}
+
+select option:hover {
+    background: #2e75b6 !important;
+    color: #ffffff !important;
 }

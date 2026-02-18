@@ -141,10 +141,10 @@ function loadDeliveries() {
         const additionalCashTip = delivery.additional_cash_tip || 0;
         // Tip already includes additional cash tip in database
         const total = (subtotal + tip).toFixed(2);
-        // Calculate tip percentage based on amount collected
+        // Calculate tip percentage based on order subtotal
         let tipPercent = 0;
-        if (collected > 0) {
-          tipPercent = (tip / collected) * 100;
+        if (subtotal > 0) {
+          tipPercent = (tip / subtotal) * 100;
         }
         const additionalCashTipDisplay = delivery.additional_cash_tip
           ? `$${parseFloat(delivery.additional_cash_tip).toFixed(2)}`
@@ -393,10 +393,10 @@ function calculateTip() {
   const totalTip = baseTip + additionalTip;
   document.getElementById("delivery-tip").value = totalTip.toFixed(2);
 
-  // Calculate tip percentage based on amount collected
+  // Calculate tip percentage based on order subtotal
   let tipPercent = 0;
-  if (collected > 0) {
-    tipPercent = (totalTip / collected) * 100;
+  if (subtotal > 0) {
+    tipPercent = (totalTip / subtotal) * 100;
   }
   document.getElementById("delivery-tip-percent").value =
     tipPercent.toFixed(1) + "%";
