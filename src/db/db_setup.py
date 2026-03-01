@@ -23,6 +23,8 @@ def create_database():
             date TEXT NOT NULL,
             start_time TEXT NOT NULL,
             end_time TEXT NOT NULL,
+            starting_mileage REAL NOT NULL,
+            ending_mileage REAL NOT NULL,
             mileage REAL NOT NULL,
             cash_tips REAL NOT NULL,
             credit_tips REAL NOT NULL,
@@ -54,12 +56,12 @@ def create_database():
 
     # Sample shifts
     cursor.execute("""
-        INSERT OR IGNORE INTO shifts (driver_id, date, start_time, end_time, mileage, cash_tips, credit_tips, owed, hourly_rate)
-        VALUES (1, '2026-01-05', '10:00', '16:00', 45.0, 30.00, 25.00, 15.00, 18.50)
+        INSERT OR IGNORE INTO shifts (driver_id, date, start_time, end_time, starting_mileage, ending_mileage, mileage, cash_tips, credit_tips, owed, hourly_rate)
+        VALUES (1, '2026-01-05', '10:00', '16:00', 10000, 10045, 45.0, 30.00, 25.00, 15.00, 18.50)
     """)
     cursor.execute("""
-        INSERT OR IGNORE INTO shifts (driver_id, date, start_time, end_time, mileage, cash_tips, credit_tips, owed, hourly_rate)
-        VALUES (1, '2026-01-06', '11:30', '17:30', 60.0, 25.00, 35.00, 20.00, 20.00)
+        INSERT OR IGNORE INTO shifts (driver_id, date, start_time, end_time, starting_mileage, ending_mileage, mileage, cash_tips, credit_tips, owed, hourly_rate)
+        VALUES (1, '2026-01-06', '11:30', '17:30', 10045, 10105, 60.0, 25.00, 35.00, 20.00, 20.00)
     """)
 
     conn.commit()

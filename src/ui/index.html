@@ -8,7 +8,12 @@
     <body>
         <div class="app-container">
             <aside class="sidebar">
-                <img src="DriverPayTrackerLogo.png" alt="Company Logo" width="240" height="160">
+                <img
+                    src="DriverPayTrackerLogo.png"
+                    alt="Company Logo"
+                    width="240"
+                    height="160"
+                />
 
                 <h2>Driver Selection</h2>
                 <label>Date Range</label>
@@ -36,7 +41,9 @@
                                 <th>Date</th>
                                 <th>Start</th>
                                 <th>End</th>
-                                <th>Mileage</th>
+                                <th>Start Mileage</th>
+                                <th>End Mileage</th>
+                                <th>Total Mileage</th>
                                 <th>Cash Tips</th>
                                 <th>Credit Tips</th>
                                 <th>Owed</th>
@@ -136,12 +143,31 @@
                             <input type="time" id="shift-end" required /></label
                         ><br /><br />
                         <label
-                            >Mileage:
+                            >Starting Mileage:
+                            <input
+                                type="number"
+                                step="0.1"
+                                min="0"
+                                id="shift-starting-mileage"
+                                required /></label
+                        ><br /><br />
+                        <label
+                            >Ending Mileage:
+                            <input
+                                type="number"
+                                step="0.1"
+                                min="0"
+                                id="shift-ending-mileage"
+                                required /></label
+                        ><br /><br />
+                        <label
+                            >Total Mileage:
                             <input
                                 type="number"
                                 step="0.1"
                                 id="shift-mileage"
-                                required /></label
+                                readonly
+                                style="background: #f0f0f0" /></label
                         ><br /><br />
                         <label
                             >Cash Tips:

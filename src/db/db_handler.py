@@ -26,7 +26,7 @@ class DBHandler(QObject):
     def get_shifts(self, driver_id, start_date="", end_date=""):
         cursor = self.conn.cursor()
         query = """
-           SELECT id, date, start_time, end_time, mileage, cash_tips, credit_tips, owed, hourly_rate
+           SELECT id, date, start_time, end_time, starting_mileage, ending_mileage, mileage, cash_tips, credit_tips, owed, hourly_rate
            FROM shifts WHERE driver_id = ?
         """
         params = [driver_id]
@@ -44,6 +44,8 @@ class DBHandler(QObject):
                     "date": row["date"],
                     "start": row["start_time"],
                     "end": row["end_time"],
+                    "starting_mileage": row["starting_mileage"],
+                    "ending_mileage": row["ending_mileage"],
                     "mileage": row["mileage"],
                     "cash": f"${row['cash_tips']:.2f}",
                     "credit": f"${row['credit_tips']:.2f}",
@@ -58,7 +60,7 @@ class DBHandler(QObject):
         cursor = self.conn.cursor()
         cursor.execute(
             """
-               SELECT id, driver_id, date, start_time, end_time, mileage, cash_tips, credit_tips, owed, hourly_rate
+               SELECT id, driver_id, date, start_time, end_time, starting_mileage, ending_mileage, mileage, cash_tips, credit_tips, owed, hourly_rate
                FROM shifts WHERE id = ?
            """,
             (shift_id,),
@@ -69,30 +71,35 @@ class DBHandler(QObject):
         else:
             return json.dumps({})
 
-    @Slot(str, str, str, str, float, float, float, float, float)
+    @Slot(str, str, str, str, float, float, float, float, float, float)
     def add_shift(
         self,
         driver_id,
         date,
         start_time,
         end_time,
-        mileage,
+        starting_mileage,
+        ending_mileage,
         cash_tips,
         credit_tips,
         owed,
         hourly_rate,
     ):
+        # Calculate total mileage
+        mileage = ending_mileage - starting_mileage
         cursor = self.conn.cursor()
         cursor.execute(
             """
-               INSERT INTO shifts (driver_id, date, start_time, end_time, mileage, cash_tips, credit_tips, owed, hourly_rate)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+               INSERT INTO shifts (driver_id, date, start_time, end_time, starting_mileage, ending_mileage, mileage, cash_tips, credit_tips, owed, hourly_rate)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            """,
             (
                 driver_id,
                 date,
                 start_time,
                 end_time,
+                starting_mileage,
+                ending_mileage,
                 mileage,
                 cash_tips,
                 credit_tips,
@@ -102,29 +109,34 @@ class DBHandler(QObject):
         )
         self.conn.commit()
 
-    @Slot(str, str, str, str, float, float, float, float, float)
+    @Slot(str, str, str, str, float, float, float, float, float, float)
     def update_shift(
         self,
         shift_id,
         date,
         start_time,
         end_time,
-        mileage,
+        starting_mileage,
+        ending_mileage,
         cash_tips,
         credit_tips,
         owed,
         hourly_rate,
     ):
+        # Calculate total mileage
+        mileage = ending_mileage - starting_mileage
         cursor = self.conn.cursor()
         cursor.execute(
             """
-               UPDATE shifts SET date = ?, start_time = ?, end_time = ?, mileage = ?, cash_tips = ?, credit_tips = ?, owed = ?, hourly_rate = ?
+               UPDATE shifts SET date = ?, start_time = ?, end_time = ?, starting_mileage = ?, ending_mileage = ?, mileage = ?, cash_tips = ?, credit_tips = ?, owed = ?, hourly_rate = ?
                WHERE id = ?
            """,
             (
                 date,
                 start_time,
                 end_time,
+                starting_mileage,
+                ending_mileage,
                 mileage,
                 cash_tips,
                 credit_tips,

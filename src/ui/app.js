@@ -98,6 +98,8 @@ function loadShifts() {
                 <td>${shift.date}</td>
                 <td>${shift.start}</td>
                 <td>${shift.end}</td>
+                <td>${shift.starting_mileage}</td>
+                <td>${shift.ending_mileage}</td>
                 <td>${shift.mileage}</td>
                 <td class="green">${shift.cash}</td>
                 <td class="green">${shift.credit}</td>
@@ -222,7 +224,27 @@ document.getElementById("add-shift-form").addEventListener("submit", (e) => {
   const date = document.getElementById("shift-date").value;
   const start = document.getElementById("shift-start").value;
   const end = document.getElementById("shift-end").value;
-  const mileage = parseFloat(document.getElementById("shift-mileage").value);
+  const startingMileage = parseFloat(
+    document.getElementById("shift-starting-mileage").value,
+  );
+  const endingMileage = parseFloat(
+    document.getElementById("shift-ending-mileage").value,
+  );
+
+  // Input Validation
+  if (startingMileage < 0) {
+    alert("Starting mileage cannot be negative.");
+    return;
+  }
+  if (endingMileage < 0) {
+    alert("Ending mileage cannot be negative.");
+    return;
+  }
+  if (endingMileage < startingMileage) {
+    alert("Ending mileage cannot be less than starting mileage.");
+    return;
+  }
+
   const cash = parseFloat(document.getElementById("shift-cash").value);
   const credit = parseFloat(document.getElementById("shift-credit").value);
   const owed = parseFloat(document.getElementById("shift-owed").value);
@@ -233,7 +255,8 @@ document.getElementById("add-shift-form").addEventListener("submit", (e) => {
       date,
       start,
       end,
-      mileage,
+      startingMileage,
+      endingMileage,
       cash,
       credit,
       owed,
@@ -245,7 +268,8 @@ document.getElementById("add-shift-form").addEventListener("submit", (e) => {
       date,
       start,
       end,
-      mileage,
+      startingMileage,
+      endingMileage,
       cash,
       credit,
       owed,
@@ -321,6 +345,10 @@ document.getElementById("edit-shift-btn").addEventListener("click", () => {
     document.getElementById("shift-date").value = shift.date;
     document.getElementById("shift-start").value = shift.start_time;
     document.getElementById("shift-end").value = shift.end_time;
+    document.getElementById("shift-starting-mileage").value =
+      shift.starting_mileage;
+    document.getElementById("shift-ending-mileage").value =
+      shift.ending_mileage;
     document.getElementById("shift-mileage").value = shift.mileage;
     document.getElementById("shift-cash").value = shift.cash_tips;
     document.getElementById("shift-credit").value = shift.credit_tips;
@@ -419,6 +447,25 @@ function toggleAdditionalCashTipField() {
   }
   calculateTip();
 }
+
+// Calculate total mileage from starting and ending mileage
+function calculateMileage() {
+  const startingMileage =
+    parseFloat(document.getElementById("shift-starting-mileage").value) || 0;
+  const endingMileage =
+    parseFloat(document.getElementById("shift-ending-mileage").value) || 0;
+  const totalMileage = endingMileage - startingMileage;
+  document.getElementById("shift-mileage").value =
+    totalMileage >= 0 ? totalMileage.toFixed(1) : "";
+}
+
+// Add event listeners for mileage calculation
+document
+  .getElementById("shift-starting-mileage")
+  .addEventListener("input", calculateMileage);
+document
+  .getElementById("shift-ending-mileage")
+  .addEventListener("input", calculateMileage);
 
 document.getElementById("add-delivery-btn").addEventListener("click", () => {
   deliveryModalMode = "add";
