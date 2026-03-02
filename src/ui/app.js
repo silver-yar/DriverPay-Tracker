@@ -276,27 +276,13 @@ document.getElementById("add-shift-form").addEventListener("submit", (e) => {
       hourly,
     );
   }
-  modalMode = "add";
-  currentShiftId = null;
-  document.getElementById("modal-title").textContent = "Add New Shift";
-  document.querySelector('#add-shift-form button[type="submit"]').textContent =
-    "Add Shift";
-  document.getElementById("shift-id").value = "";
-  document.getElementById("add-shift-modal").style.display = "none";
-  document.getElementById("add-shift-form").reset();
+  closeShiftModal();
   loadShifts();
   loadSummary();
 });
 
 document.getElementById("cancel-add").addEventListener("click", () => {
-  modalMode = "add";
-  currentShiftId = null;
-  document.getElementById("modal-title").textContent = "Add New Shift";
-  document.querySelector('#add-shift-form button[type="submit"]').textContent =
-    "Add Shift";
-  document.getElementById("shift-id").value = "";
-  document.getElementById("add-shift-modal").style.display = "none";
-  document.getElementById("add-shift-form").reset();
+  closeShiftModal();
 });
 
 document.getElementById("delete-shift-btn").addEventListener("click", () => {
@@ -459,6 +445,32 @@ function calculateMileage() {
     totalMileage >= 0 ? totalMileage.toFixed(1) : "";
 }
 
+// Helper function to close shift modal
+function closeShiftModal() {
+  modalMode = "add";
+  currentShiftId = null;
+  document.getElementById("modal-title").textContent = "Add New Shift";
+  document.querySelector('#add-shift-form button[type="submit"]').textContent =
+    "Add Shift";
+  document.getElementById("shift-id").value = "";
+  document.getElementById("add-shift-modal").style.display = "none";
+  document.getElementById("add-shift-form").reset();
+}
+
+// Helper function to close delivery modal
+function closeDeliveryModal() {
+  deliveryModalMode = "add";
+  currentDeliveryId = null;
+  document.getElementById("delivery-modal-title").textContent =
+    "Add New Delivery";
+  document.querySelector(
+    '#add-delivery-form button[type="submit"]',
+  ).textContent = "Add Delivery";
+  document.getElementById("delivery-id").value = "";
+  document.getElementById("add-delivery-modal").style.display = "none";
+  document.getElementById("add-delivery-form").reset();
+}
+
 // Add event listeners for mileage calculation
 document
   .getElementById("shift-starting-mileage")
@@ -584,31 +596,13 @@ document.getElementById("add-delivery-form").addEventListener("submit", (e) => {
       additionalCashTip,
     );
   }
-  deliveryModalMode = "add";
-  currentDeliveryId = null;
-  document.getElementById("delivery-modal-title").textContent =
-    "Add New Delivery";
-  document.querySelector(
-    '#add-delivery-form button[type="submit"]',
-  ).textContent = "Add Delivery";
-  document.getElementById("delivery-id").value = "";
-  document.getElementById("add-delivery-modal").style.display = "none";
-  document.getElementById("add-delivery-form").reset();
+  closeDeliveryModal();
   loadDeliveries();
   loadDeliveriesSummary();
 });
 
 document.getElementById("cancel-delivery-add").addEventListener("click", () => {
-  deliveryModalMode = "add";
-  currentDeliveryId = null;
-  document.getElementById("delivery-modal-title").textContent =
-    "Add New Delivery";
-  document.querySelector(
-    '#add-delivery-form button[type="submit"]',
-  ).textContent = "Add Delivery";
-  document.getElementById("delivery-id").value = "";
-  document.getElementById("add-delivery-modal").style.display = "none";
-  document.getElementById("add-delivery-form").reset();
+  closeDeliveryModal();
 });
 
 document.getElementById("delete-delivery-btn").addEventListener("click", () => {
