@@ -27,6 +27,8 @@ def setup_database(conn):
             date TEXT NOT NULL,
             start_time TEXT NOT NULL,
             end_time TEXT NOT NULL,
+            starting_mileage REAL NOT NULL,
+            ending_mileage REAL NOT NULL,
             mileage REAL NOT NULL,
             cash_tips REAL NOT NULL,
             credit_tips REAL NOT NULL,
@@ -53,10 +55,10 @@ def setup_database(conn):
     cursor.execute("INSERT INTO drivers (name) VALUES ('John Smith')")
     cursor.execute("INSERT INTO drivers (name) VALUES ('Sarah Davis')")
     cursor.execute(
-        "INSERT INTO shifts (driver_id, date, start_time, end_time, mileage, cash_tips, credit_tips, owed, hourly_rate) VALUES (1, '2023-01-01', '08:00', '16:00', 100.0, 50.00, 40.00, 10.00, 15.00)"
+        "INSERT INTO shifts (driver_id, date, start_time, end_time, starting_mileage, ending_mileage, mileage, cash_tips, credit_tips, owed, hourly_rate) VALUES (1, '2023-01-01', '08:00', '16:00', 1000, 1100, 100.0, 50.00, 40.00, 10.00, 15.00)"
     )
     cursor.execute(
-        "INSERT INTO shifts (driver_id, date, start_time, end_time, mileage, cash_tips, credit_tips, owed, hourly_rate) VALUES (1, '2023-01-02', '09:00', '17:00', 120.0, 60.00, 50.00, 15.00, 16.00)"
+        "INSERT INTO shifts (driver_id, date, start_time, end_time, starting_mileage, ending_mileage, mileage, cash_tips, credit_tips, owed, hourly_rate) VALUES (1, '2023-01-02', '09:00', '17:00', 1100, 1220, 120.0, 60.00, 50.00, 15.00, 16.00)"
     )
     # Sample delivery data
     cursor.execute(
@@ -92,7 +94,7 @@ def test_get_shifts(db_handler):
 
 def test_add_shift(db_handler):
     db_handler.add_shift(
-        1, "2023-01-03", "10:00", "18:00", 110.0, 55.00, 45.00, 12.00, 15.50
+        1, "2023-01-03", "10:00", "18:00", 1220, 1330, 55.00, 45.00, 12.00, 15.50
     )
     shifts = db_handler.get_shifts(1)
     import json
@@ -124,7 +126,7 @@ def test_get_shift(db_handler):
 
 def test_update_shift(db_handler):
     db_handler.update_shift(
-        1, "2023-01-01", "08:30", "16:30", 105.0, 52.00, 42.00, 11.00, 15.25
+        1, "2023-01-01", "08:30", "16:30", 1000, 1105, 52.00, 42.00, 11.00, 15.25
     )
     shift = db_handler.get_shift(1)
     import json
