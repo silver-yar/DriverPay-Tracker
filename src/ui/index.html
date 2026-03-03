@@ -72,8 +72,8 @@
                                 <th>Payment Type</th>
                                 <th>Subtotal</th>
                                 <th>Amount Collected</th>
-                                <th>Tip</th>
-                                <th>Additional Cash Tip</th>
+                                <th>Credit/Debit Tip</th>
+                                <th>Cash Tip</th>
                                 <th>Tip %</th>
                                 <th>Total</th>
                             </tr>
@@ -280,7 +280,7 @@
                                 required /></label
                         ><br /><br />
                         <label
-                            >Tip (auto-calculated):
+                            >Credit/Debit Tip (auto-calculated):
                             <input
                                 type="number"
                                 step="0.01"
@@ -297,13 +297,13 @@
                                 style="background: #f0f0f0" /></label
                         ><br /><br />
                         <label
-                            >Additional Cash Tip:
+                            >Cash Tip:
                             <input
                                 type="number"
                                 step="0.01"
                                 min="0"
                                 id="delivery-additional-cash-tip"
-                                disabled
+                                enabled
                                 style="background: #e0e0e0" /></label
                         ><br /><br />
                         <button type="submit">Add Delivery</button>

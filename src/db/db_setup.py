@@ -43,8 +43,8 @@ def create_database():
             payment_type TEXT NOT NULL,
             order_subtotal REAL NOT NULL,
             amount_collected REAL NOT NULL,
-            tip REAL NOT NULL,
-            additional_cash_tip REAL DEFAULT 0.0,
+            card_tip REAL NOT NULL,
+            cash_tip REAL DEFAULT 0.0,
             FOREIGN KEY (driver_id) REFERENCES drivers (id)
         )
     """)

@@ -46,8 +46,8 @@ def setup_database(conn):
             payment_type TEXT NOT NULL,
             order_subtotal REAL NOT NULL,
             amount_collected REAL NOT NULL,
-            tip REAL NOT NULL,
-            additional_cash_tip REAL DEFAULT 0.0,
+            card_tip REAL NOT NULL,
+            cash_tip REAL DEFAULT 0.0,
             FOREIGN KEY (driver_id) REFERENCES drivers (id)
         )
     """)
@@ -62,13 +62,13 @@ def setup_database(conn):
     )
     # Sample delivery data
     cursor.execute(
-        "INSERT INTO deliveries (driver_id, date, order_num, payment_type, order_subtotal, amount_collected, tip, additional_cash_tip) VALUES (1, '2023-01-01', '#1001', 'Credit', 25.00, 30.00, 5.00, 2.00)"
+        "INSERT INTO deliveries (driver_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip) VALUES (1, '2023-01-01', '#1001', 'Credit', 25.00, 30.00, 5.00, 2.00)"
     )
     cursor.execute(
-        "INSERT INTO deliveries (driver_id, date, order_num, payment_type, order_subtotal, amount_collected, tip, additional_cash_tip) VALUES (1, '2023-01-02', '#1002', 'Cash', 40.00, 45.00, 5.00, 0.00)"
+        "INSERT INTO deliveries (driver_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip) VALUES (1, '2023-01-02', '#1002', 'Cash', 40.00, 45.00, 5.00, 0.00)"
     )
     cursor.execute(
-        "INSERT INTO deliveries (driver_id, date, order_num, payment_type, order_subtotal, amount_collected, tip, additional_cash_tip) VALUES (2, '2023-01-01', '#2001', 'Debit', 18.50, 22.00, 3.50, 1.50)"
+        "INSERT INTO deliveries (driver_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip) VALUES (2, '2023-01-01', '#2001', 'Debit', 18.50, 22.00, 3.50, 1.50)"
     )
     conn.commit()
 
@@ -155,7 +155,7 @@ def test_get_deliveries(db_handler):
     assert deliveries_list[0]["payment_type"] == "Cash"
     assert deliveries_list[0]["order_subtotal"] == "$40.00"
     assert deliveries_list[0]["amount_collected"] == "$45.00"
-    assert deliveries_list[0]["tip"] == "$5.00"
+    assert deliveries_list[0]["card_tip"] == "$5.00"
     assert "id" in deliveries_list[0]
 
 
@@ -169,7 +169,7 @@ def test_get_delivery(db_handler):
     assert delivery_dict["payment_type"] == "Credit"
     assert delivery_dict["order_subtotal"] == 25.00
     assert delivery_dict["amount_collected"] == 30.00
-    assert delivery_dict["tip"] == 5.00
+    assert delivery_dict["card_tip"] == 5.00
 
 
 def test_add_delivery(db_handler):
