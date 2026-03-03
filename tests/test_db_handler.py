@@ -33,7 +33,7 @@ def setup_database(conn):
             cash_tips REAL NOT NULL,
             credit_tips REAL NOT NULL,
             owed REAL NOT NULL,
-            hourly_rate REAL NOT NULL,
+            mileage_rate REAL NOT NULL,
             FOREIGN KEY (driver_id) REFERENCES drivers (id)
         )
     """)
@@ -55,10 +55,10 @@ def setup_database(conn):
     cursor.execute("INSERT INTO drivers (name) VALUES ('John Smith')")
     cursor.execute("INSERT INTO drivers (name) VALUES ('Sarah Davis')")
     cursor.execute(
-        "INSERT INTO shifts (driver_id, date, start_time, end_time, starting_mileage, ending_mileage, mileage, cash_tips, credit_tips, owed, hourly_rate) VALUES (1, '2023-01-01', '08:00', '16:00', 1000, 1100, 100.0, 50.00, 40.00, 10.00, 15.00)"
+        "INSERT INTO shifts (driver_id, date, start_time, end_time, starting_mileage, ending_mileage, mileage, cash_tips, credit_tips, owed, mileage_rate) VALUES (1, '2023-01-01', '08:00', '16:00', 1000, 1100, 100.0, 50.00, 40.00, 10.00, 15.00)"
     )
     cursor.execute(
-        "INSERT INTO shifts (driver_id, date, start_time, end_time, starting_mileage, ending_mileage, mileage, cash_tips, credit_tips, owed, hourly_rate) VALUES (1, '2023-01-02', '09:00', '17:00', 1100, 1220, 120.0, 60.00, 50.00, 15.00, 16.00)"
+        "INSERT INTO shifts (driver_id, date, start_time, end_time, starting_mileage, ending_mileage, mileage, cash_tips, credit_tips, owed, mileage_rate) VALUES (1, '2023-01-02', '09:00', '17:00', 1100, 1220, 120.0, 60.00, 50.00, 15.00, 16.00)"
     )
     # Sample delivery data
     cursor.execute(
@@ -112,7 +112,7 @@ def test_get_summary(db_handler):
     assert summary_dict["total_cash"] == 110.0
     assert summary_dict["total_credit"] == 90.0
     assert summary_dict["total_owed"] == 25.0
-    assert summary_dict["avg_hourly"] == 15.5
+    assert summary_dict["avg_mileage_rate"] == 15.5
 
 
 def test_get_shift(db_handler):

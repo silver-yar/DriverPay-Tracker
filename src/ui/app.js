@@ -104,7 +104,7 @@ function loadShifts() {
                 <td class="green">${shift.cash}</td>
                 <td class="green">${shift.credit}</td>
                 <td class="${shift.owed.startsWith("-") ? "red" : "green"}">${shift.owed}</td>
-                <td>${shift.hourly}</td>
+                <td>${shift.mileage_rate}</td>
             `;
       table.appendChild(row);
     });
@@ -121,7 +121,7 @@ function loadSummary() {
             <div class="card green">Cash Tips<br><strong>$${summary.total_cash.toFixed(2)}</strong></div>
             <div class="card green">Credit Tips<br><strong>$${summary.total_credit.toFixed(2)}</strong></div>
             <div class="card ${summary.total_owed < 0 ? "red" : "green"}">Owed<br><strong>$${summary.total_owed.toFixed(2)}</strong></div>
-            <div class="card green">Avg Hourly<br><strong>$${summary.avg_hourly.toFixed(2)}</strong></div>
+            <div class="card green">Avg Mileage Rate<br><strong>$${summary.avg_mileage_rate.toFixed(2)}</strong></div>
         `;
   });
 }
@@ -248,7 +248,7 @@ document.getElementById("add-shift-form").addEventListener("submit", (e) => {
   const cash = parseFloat(document.getElementById("shift-cash").value);
   const credit = parseFloat(document.getElementById("shift-credit").value);
   const owed = parseFloat(document.getElementById("shift-owed").value);
-  const hourly = parseFloat(document.getElementById("shift-hourly").value);
+  const mileageRate = parseFloat(document.getElementById("shift-mileage-rate").value);
   if (modalMode === "edit") {
     db.update_shift(
       currentShiftId,
@@ -260,7 +260,7 @@ document.getElementById("add-shift-form").addEventListener("submit", (e) => {
       cash,
       credit,
       owed,
-      hourly,
+      mileageRate,
     );
   } else {
     db.add_shift(
@@ -273,7 +273,7 @@ document.getElementById("add-shift-form").addEventListener("submit", (e) => {
       cash,
       credit,
       owed,
-      hourly,
+      mileageRate,
     );
   }
   closeShiftModal();
@@ -339,7 +339,7 @@ document.getElementById("edit-shift-btn").addEventListener("click", () => {
     document.getElementById("shift-cash").value = shift.cash_tips;
     document.getElementById("shift-credit").value = shift.credit_tips;
     document.getElementById("shift-owed").value = shift.owed;
-    document.getElementById("shift-hourly").value = shift.hourly_rate;
+    document.getElementById("shift-mileage-rate").value = shift.mileage_rate_rate;
     document.getElementById("add-shift-modal").style.display = "block";
   });
 });

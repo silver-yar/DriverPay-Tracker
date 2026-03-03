@@ -26,7 +26,7 @@ class DBHandler(QObject):
     def get_shifts(self, driver_id, start_date="", end_date=""):
         cursor = self.conn.cursor()
         query = """
-           SELECT id, date, start_time, end_time, starting_mileage, ending_mileage, mileage, cash_tips, credit_tips, owed, hourly_rate
+           SELECT id, date, start_time, end_time, starting_mileage, ending_mileage, mileage, cash_tips, credit_tips, owed, mileage_rate
            FROM shifts WHERE driver_id = ?
         """
         params = [driver_id]
@@ -50,7 +50,7 @@ class DBHandler(QObject):
                     "cash": f"${row['cash_tips']:.2f}",
                     "credit": f"${row['credit_tips']:.2f}",
                     "owed": f"${row['owed']:.2f}",
-                    "hourly": f"${row['hourly_rate']:.2f}",
+                    "mileage_rate": f"${row['mileage_rate']:.2f}",
                 }
             )
         return json.dumps(result)
@@ -60,7 +60,7 @@ class DBHandler(QObject):
         cursor = self.conn.cursor()
         cursor.execute(
             """
-               SELECT id, driver_id, date, start_time, end_time, starting_mileage, ending_mileage, mileage, cash_tips, credit_tips, owed, hourly_rate
+               SELECT id, driver_id, date, start_time, end_time, starting_mileage, ending_mileage, mileage, cash_tips, credit_tips, owed, mileage_rate
                FROM shifts WHERE id = ?
            """,
             (shift_id,),
@@ -83,14 +83,14 @@ class DBHandler(QObject):
         cash_tips,
         credit_tips,
         owed,
-        hourly_rate,
+        mileage_rate,
     ):
         # Calculate total mileage
         mileage = ending_mileage - starting_mileage
         cursor = self.conn.cursor()
         cursor.execute(
             """
-               INSERT INTO shifts (driver_id, date, start_time, end_time, starting_mileage, ending_mileage, mileage, cash_tips, credit_tips, owed, hourly_rate)
+               INSERT INTO shifts (driver_id, date, start_time, end_time, starting_mileage, ending_mileage, mileage, cash_tips, credit_tips, owed, mileage_rate)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            """,
             (
@@ -104,7 +104,7 @@ class DBHandler(QObject):
                 cash_tips,
                 credit_tips,
                 owed,
-                hourly_rate,
+                mileage_rate,
             ),
         )
         self.conn.commit()
@@ -121,14 +121,14 @@ class DBHandler(QObject):
         cash_tips,
         credit_tips,
         owed,
-        hourly_rate,
+        mileage_rate,
     ):
         # Calculate total mileage
         mileage = ending_mileage - starting_mileage
         cursor = self.conn.cursor()
         cursor.execute(
             """
-               UPDATE shifts SET date = ?, start_time = ?, end_time = ?, starting_mileage = ?, ending_mileage = ?, mileage = ?, cash_tips = ?, credit_tips = ?, owed = ?, hourly_rate = ?
+               UPDATE shifts SET date = ?, start_time = ?, end_time = ?, starting_mileage = ?, ending_mileage = ?, mileage = ?, cash_tips = ?, credit_tips = ?, owed = ?, mileage_rate = ?
                WHERE id = ?
            """,
             (
@@ -141,7 +141,7 @@ class DBHandler(QObject):
                 cash_tips,
                 credit_tips,
                 owed,
-                hourly_rate,
+                mileage_rate,
                 shift_id,
             ),
         )
@@ -162,7 +162,7 @@ class DBHandler(QObject):
                SUM(cash_tips) as total_cash,
                SUM(credit_tips) as total_credit,
                SUM(owed) as total_owed,
-               AVG(hourly_rate) as avg_hourly
+               AVG(mileage_rate) as avg_mileage_rate
            FROM shifts WHERE driver_id = ?
         """
         params = [driver_id]
@@ -177,7 +177,7 @@ class DBHandler(QObject):
                 "total_cash": row["total_cash"] or 0,
                 "total_credit": row["total_credit"] or 0,
                 "total_owed": row["total_owed"] or 0,
-                "avg_hourly": row["avg_hourly"] or 0,
+                "avg_mileage_rate": row["avg_mileage_rate"] or 0,
             }
         )
 
