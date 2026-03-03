@@ -38,6 +38,7 @@ def create_database():
         CREATE TABLE IF NOT EXISTS deliveries (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             driver_id INTEGER NOT NULL,
+            shift_id INTEGER,
             date TEXT NOT NULL,
             order_num TEXT,
             payment_type TEXT NOT NULL,
@@ -45,7 +46,8 @@ def create_database():
             amount_collected REAL NOT NULL,
             card_tip REAL NOT NULL,
             cash_tip REAL DEFAULT 0.0,
-            FOREIGN KEY (driver_id) REFERENCES drivers (id)
+            FOREIGN KEY (driver_id) REFERENCES drivers (id),
+            FOREIGN KEY (shift_id) REFERENCES shifts (id)
         )
     """)
 

@@ -483,6 +483,31 @@ document
   .getElementById("shift-ending-mileage")
   .addEventListener("input", calculateMileage);
 
+// Function to populate shift dropdown
+function loadShiftsForDropdown(date = "") {
+  const shiftSelect = document.getElementById("delivery-shift");
+  shiftSelect.innerHTML = '<option value="">No Shift</option>';
+
+  if (!currentDriverId) return;
+
+  return db
+    .get_shifts_for_dropdown(currentDriverId, date)
+    .then((shiftsJson) => {
+      const shifts = JSON.parse(shiftsJson);
+      shifts.forEach((shift) => {
+        const option = document.createElement("option");
+        option.value = shift.id;
+        option.textContent = `${shift.date} (${shift.start} - ${shift.end})`;
+        shiftSelect.appendChild(option);
+      });
+    });
+}
+
+// Reload shifts dropdown when delivery date changes
+document.getElementById("delivery-date").addEventListener("change", (e) => {
+  loadShiftsForDropdown(e.target.value);
+});
+
 document.getElementById("add-delivery-btn").addEventListener("click", () => {
   deliveryModalMode = "add";
   currentDeliveryId = null;
@@ -495,6 +520,9 @@ document.getElementById("add-delivery-btn").addEventListener("click", () => {
     document.querySelector(".driver-list .active").textContent;
   document.getElementById("delivery-id").value = "";
   document.getElementById("add-delivery-form").reset();
+
+  // Load shifts for dropdown
+  loadShiftsForDropdown();
 
   // Reset card tip field state
   toggleCardTipField();
@@ -558,6 +586,7 @@ document.getElementById("add-delivery-form").addEventListener("submit", (e) => {
 
   const date = document.getElementById("delivery-date").value;
   const orderNum = document.getElementById("delivery-order-num").value;
+  const shiftId = document.getElementById("delivery-shift").value;
   const paymentType = document.getElementById("delivery-payment-type").value;
   const subtotal = parseFloat(subtotalInput.value);
   const collected = parseFloat(collectedInput.value);
@@ -580,6 +609,7 @@ document.getElementById("add-delivery-form").addEventListener("submit", (e) => {
   if (deliveryModalMode === "edit") {
     db.update_delivery(
       currentDeliveryId,
+      shiftId,
       date,
       orderNum,
       paymentType,
@@ -591,6 +621,7 @@ document.getElementById("add-delivery-form").addEventListener("submit", (e) => {
   } else {
     db.add_delivery(
       currentDriverId,
+      shiftId,
       date,
       orderNum,
       paymentType,
@@ -603,6 +634,7 @@ document.getElementById("add-delivery-form").addEventListener("submit", (e) => {
   closeDeliveryModal();
   loadDeliveries();
   loadDeliveriesSummary();
+  loadShifts();
 });
 
 document.getElementById("cancel-delivery-add").addEventListener("click", () => {
@@ -669,6 +701,12 @@ document.getElementById("edit-delivery-btn").addEventListener("click", () => {
     );
     additionalTipInput.value = delivery.cash_tip || "";
     toggleCardTipField();
+
+    // Load shifts for dropdown filtered by delivery date
+    loadShiftsForDropdown(delivery.date).then(() => {
+      const shiftSelect = document.getElementById("delivery-shift");
+      shiftSelect.value = delivery.shift_id || "";
+    });
 
     calculateTip();
     document.getElementById("add-delivery-modal").style.display = "block";

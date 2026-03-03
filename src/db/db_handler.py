@@ -26,14 +26,18 @@ class DBHandler(QObject):
     def get_shifts(self, driver_id, start_date="", end_date=""):
         cursor = self.conn.cursor()
         query = """
-           SELECT id, date, start_time, end_time, starting_mileage, ending_mileage, mileage, cash_tips, credit_tips, owed, mileage_rate
-           FROM shifts WHERE driver_id = ?
+           SELECT s.id, s.date, s.start_time, s.end_time, s.starting_mileage, s.ending_mileage, s.mileage, s.owed, s.mileage_rate,
+                  COALESCE(SUM(d.card_tip), 0) as credit_tips,
+                  COALESCE(SUM(d.cash_tip), 0) as cash_tips
+           FROM shifts s
+           LEFT JOIN deliveries d ON s.id = d.shift_id
+           WHERE s.driver_id = ?
         """
         params = [driver_id]
         if start_date and end_date:
-            query += " AND date BETWEEN ? AND ?"
+            query += " AND s.date BETWEEN ? AND ?"
             params.extend([start_date, end_date])
-        query += " ORDER BY date DESC"
+        query += " GROUP BY s.id ORDER BY s.date DESC"
         cursor.execute(query, params)
         shifts = cursor.fetchall()
         result = []
@@ -185,7 +189,7 @@ class DBHandler(QObject):
     def get_deliveries(self, driver_id, start_date="", end_date=""):
         cursor = self.conn.cursor()
         query = """
-           SELECT id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip
+           SELECT id, driver_id, shift_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip
            FROM deliveries WHERE driver_id = ?
         """
         params = [driver_id]
@@ -200,6 +204,8 @@ class DBHandler(QObject):
             result.append(
                 {
                     "id": row["id"],
+                    "driver_id": row["driver_id"],
+                    "shift_id": row["shift_id"],
                     "date": row["date"],
                     "order_num": row["order_num"] or "",
                     "payment_type": row["payment_type"],
@@ -216,7 +222,7 @@ class DBHandler(QObject):
         cursor = self.conn.cursor()
         cursor.execute(
             """
-               SELECT id, driver_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip
+               SELECT id, driver_id, shift_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip
                FROM deliveries WHERE id = ?
            """,
             (delivery_id,),
@@ -256,10 +262,11 @@ class DBHandler(QObject):
 
         return errors
 
-    @Slot(str, str, str, str, float, float, float, float, result=str)
+    @Slot(str, str, str, str, str, float, float, float, float, result=str)
     def add_delivery(
         self,
         driver_id,
+        shift_id,
         date,
         order_num,
         payment_type,
@@ -276,11 +283,12 @@ class DBHandler(QObject):
         cursor = self.conn.cursor()
         cursor.execute(
             """
-               INSERT INTO deliveries (driver_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+               INSERT INTO deliveries (driver_id, shift_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
            """,
             (
                 driver_id,
+                shift_id if shift_id else None,
                 date,
                 order_num,
                 payment_type,
@@ -291,12 +299,18 @@ class DBHandler(QObject):
             ),
         )
         self.conn.commit()
+
+        # Update shift tip totals if shift_id is provided
+        if shift_id:
+            self._update_shift_tip_totals(shift_id)
+
         return json.dumps({"success": True})
 
-    @Slot(str, str, str, str, float, float, float, float, result=str)
+    @Slot(str, str, str, str, str, float, float, float, float, result=str)
     def update_delivery(
         self,
         delivery_id,
+        shift_id,
         date,
         order_num,
         payment_type,
@@ -310,13 +324,19 @@ class DBHandler(QObject):
         if errors:
             return json.dumps({"success": False, "errors": errors})
 
+        # Get current shift_id before update
         cursor = self.conn.cursor()
+        cursor.execute("SELECT shift_id FROM deliveries WHERE id = ?", (delivery_id,))
+        row = cursor.fetchone()
+        old_shift_id = row["shift_id"] if row else None
+
         cursor.execute(
             """
-               UPDATE deliveries SET date = ?, order_num = ?, payment_type = ?, order_subtotal = ?, amount_collected = ?, card_tip = ?, cash_tip = ?
+               UPDATE deliveries SET shift_id = ?, date = ?, order_num = ?, payment_type = ?, order_subtotal = ?, amount_collected = ?, card_tip = ?, cash_tip = ?
                WHERE id = ?
            """,
             (
+                shift_id if shift_id else None,
                 date,
                 order_num,
                 payment_type,
@@ -328,12 +348,48 @@ class DBHandler(QObject):
             ),
         )
         self.conn.commit()
+
+        # Update tip totals for both old and new shift if they differ
+        if old_shift_id and old_shift_id != shift_id:
+            self._update_shift_tip_totals(old_shift_id)
+        if shift_id:
+            self._update_shift_tip_totals(shift_id)
+
         return json.dumps({"success": True})
 
     @Slot(str)
     def delete_delivery(self, delivery_id):
+        # Get shift_id before deletion
         cursor = self.conn.cursor()
+        cursor.execute("SELECT shift_id FROM deliveries WHERE id = ?", (delivery_id,))
+        row = cursor.fetchone()
+        shift_id = row["shift_id"] if row else None
+
         cursor.execute("DELETE FROM deliveries WHERE id = ?", (delivery_id,))
+        self.conn.commit()
+
+        # Update shift tip totals if delivery was linked to a shift
+        if shift_id:
+            self._update_shift_tip_totals(shift_id)
+
+    def _update_shift_tip_totals(self, shift_id):
+        """Calculate and update tip totals for a shift based on associated deliveries."""
+        cursor = self.conn.cursor()
+        cursor.execute(
+            """
+               SELECT SUM(card_tip) as total_credit_tips, SUM(cash_tip) as total_cash_tips
+               FROM deliveries WHERE shift_id = ?
+            """,
+            (shift_id,),
+        )
+        row = cursor.fetchone()
+        credit_tips = row["total_credit_tips"] or 0
+        cash_tips = row["total_cash_tips"] or 0
+
+        cursor.execute(
+            "UPDATE shifts SET credit_tips = ?, cash_tips = ? WHERE id = ?",
+            (credit_tips, cash_tips, shift_id),
+        )
         self.conn.commit()
 
     @Slot(str, str, str, result=str)
@@ -363,3 +419,30 @@ class DBHandler(QObject):
                 "delivery_count": row["delivery_count"] or 0,
             }
         )
+
+    @Slot(str, str, result=str)
+    def get_shifts_for_dropdown(self, driver_id, date=""):
+        """Get shifts for dropdown selection in delivery modal."""
+        cursor = self.conn.cursor()
+        query = """
+               SELECT id, date, start_time, end_time
+               FROM shifts WHERE driver_id = ?
+           """
+        params = [driver_id]
+        if date:
+            query += " AND date = ?"
+            params.append(date)
+        query += " ORDER BY date DESC"
+        cursor.execute(query, params)
+        shifts = cursor.fetchall()
+        result = []
+        for row in shifts:
+            result.append(
+                {
+                    "id": row["id"],
+                    "date": row["date"],
+                    "start": row["start_time"],
+                    "end": row["end_time"],
+                }
+            )
+        return json.dumps(result)

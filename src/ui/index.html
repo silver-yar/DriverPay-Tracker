@@ -175,7 +175,8 @@
                                 type="number"
                                 step="0.01"
                                 id="shift-cash"
-                                required /></label
+                                readonly
+                                style="background: #f0f0f0" /></label
                         ><br /><br />
                         <label
                             >Credit Tips:
@@ -183,7 +184,8 @@
                                 type="number"
                                 step="0.01"
                                 id="shift-credit"
-                                required /></label
+                                readonly
+                                style="background: #f0f0f0" /></label
                         ><br /><br />
                         <label
                             >Owed:
@@ -252,6 +254,12 @@
                                 id="delivery-order-num"
                                 placeholder="e.g., #1234"
                                 required /></label
+                        ><br /><br />
+                        <label
+                            >Shift:
+                            <select id="delivery-shift">
+                                <option value="">No Shift</option>
+                            </select></label
                         ><br /><br />
                         <label
                             >Payment Type:
