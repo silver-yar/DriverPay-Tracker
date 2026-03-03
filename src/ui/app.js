@@ -403,22 +403,16 @@ function calculateTip() {
     parseFloat(document.getElementById("delivery-subtotal").value) || 0;
   const collected =
     parseFloat(document.getElementById("delivery-collected").value) || 0;
-  const totalTip = collected - subtotal;
+  const cardTip = collected - subtotal;
+  const cashTip =
+    parseFloat(document.getElementById("delivery-cash-tip").value) || 0;
+  const totalTip = cardTip + cashTip;
 
-  // Get additional cash tip if enabled
-  // const additionalTipInput = document.getElementById(
-  //   "delivery-additional-cash-tip",
-  // );
-  // let additionalTip = 0;
-  // if (!additionalTipInput.disabled) {
-  //   additionalTip = parseFloat(additionalTipInput.value) || 0;
-  // }
+  document.getElementById("delivery-card-tip").value = cardTip.toFixed(2);
 
-  document.getElementById("delivery-tip").value = totalTip.toFixed(2);
-
-  // Calculate tip percentage based on amount collected
+  // Calculate tip percentage based on subtotal
   let tipPercent = 0;
-  if (collected > 0) {
+  if (subtotal > 0) {
     tipPercent = (totalTip / subtotal) * 100;
   }
   document.getElementById("delivery-tip-percent").value =
@@ -427,7 +421,7 @@ function calculateTip() {
 
 function toggleCardTipField() {
   const paymentType = document.getElementById("delivery-payment-type").value;
-  const cardTipInput = document.getElementById("delivery-tip");
+  const cardTipInput = document.getElementById("delivery-card-tip");
 
   if (paymentType === "Cash") {
     cardTipInput.disabled = true;
@@ -539,7 +533,7 @@ document
   .getElementById("delivery-collected")
   .addEventListener("input", calculateTip);
 document
-  .getElementById("delivery-additional-cash-tip")
+  .getElementById("delivery-cash-tip")
   .addEventListener("input", calculateTip);
 
 // Add validation listeners for currency fields
@@ -556,7 +550,7 @@ document
     calculateTip();
   });
 document
-  .getElementById("delivery-additional-cash-tip")
+  .getElementById("delivery-cash-tip")
   .addEventListener("blur", function () {
     validateCurrencyInput(this);
     calculateTip();
@@ -593,11 +587,11 @@ document.getElementById("add-delivery-form").addEventListener("submit", (e) => {
   const subtotal = parseFloat(subtotalInput.value);
   const collected = parseFloat(collectedInput.value);
   const cashTip = parseFloat(
-    document.getElementById("delivery-additional-cash-tip").value,
+    document.getElementById("delivery-cash-tip").value,
   );
 
   // Get credit/debit tip (0 if disabled)
-  const cardTipInput = document.getElementById("delivery-tip");
+  const cardTipInput = document.getElementById("delivery-card-tip");
   const cardTip = cardTipInput.disabled
     ? 0
     : parseFloat(cardTipInput.value) || 0;
@@ -698,9 +692,7 @@ document.getElementById("edit-delivery-btn").addEventListener("click", () => {
       delivery.amount_collected;
 
     // Set additional cash tip and toggle field
-    const additionalTipInput = document.getElementById(
-      "delivery-additional-cash-tip",
-    );
+    const additionalTipInput = document.getElementById("delivery-cash-tip");
     additionalTipInput.value = delivery.cash_tip || "";
     toggleCardTipField();
 
