@@ -230,6 +230,9 @@ document.getElementById("add-shift-form").addEventListener("submit", (e) => {
   const endingMileage = parseFloat(
     document.getElementById("shift-ending-mileage").value,
   );
+  const mileageRate = parseFloat(
+    document.getElementById("shift-mileage-rate").value,
+  );
 
   // Input Validation
   if (startingMileage < 0) {
@@ -240,6 +243,10 @@ document.getElementById("add-shift-form").addEventListener("submit", (e) => {
     alert("Ending mileage cannot be negative.");
     return;
   }
+  if (mileageRate < 0) {
+    alert("Mileage rate cannot be negative.");
+    return;
+  }
   if (endingMileage < startingMileage) {
     alert("Ending mileage cannot be less than starting mileage.");
     return;
@@ -248,7 +255,6 @@ document.getElementById("add-shift-form").addEventListener("submit", (e) => {
   const cash = parseFloat(document.getElementById("shift-cash").value);
   const credit = parseFloat(document.getElementById("shift-credit").value);
   const owed = parseFloat(document.getElementById("shift-owed").value);
-  const mileageRate = parseFloat(document.getElementById("shift-mileage-rate").value);
   if (modalMode === "edit") {
     db.update_shift(
       currentShiftId,
@@ -339,7 +345,8 @@ document.getElementById("edit-shift-btn").addEventListener("click", () => {
     document.getElementById("shift-cash").value = shift.cash_tips;
     document.getElementById("shift-credit").value = shift.credit_tips;
     document.getElementById("shift-owed").value = shift.owed;
-    document.getElementById("shift-mileage-rate").value = shift.mileage_rate_rate;
+    document.getElementById("shift-mileage-rate").value =
+      shift.mileage_rate_rate;
     document.getElementById("add-shift-modal").style.display = "block";
   });
 });
