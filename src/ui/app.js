@@ -398,17 +398,38 @@ function validateCollectedVsSubtotal() {
   return true;
 }
 
-function calculateTip() {
+function calculateTip(isInitialLoad = false) {
   const subtotal =
     parseFloat(document.getElementById("delivery-subtotal").value) || 0;
   const collected =
     parseFloat(document.getElementById("delivery-collected").value) || 0;
-  const cardTip = collected - subtotal;
-  const cashTip =
-    parseFloat(document.getElementById("delivery-cash-tip").value) || 0;
+  const paymentType = document.getElementById("delivery-payment-type").value;
+
+  let cardTip, cashTip;
+
+  if (paymentType === "Cash") {
+    // For Cash: card tip is 0, cash tip is auto-calculated (only if not loading existing data)
+    cardTip = 0;
+    if (isInitialLoad) {
+      // When loading existing delivery, preserve the saved cash tip value
+      cashTip =
+        parseFloat(document.getElementById("delivery-cash-tip").value) || 0;
+    } else {
+      cashTip = collected - subtotal;
+    }
+  } else {
+    // For Credit/Debit: card tip is auto-calculated, cash tip is manual
+    cardTip = collected - subtotal;
+    cashTip =
+      parseFloat(document.getElementById("delivery-cash-tip").value) || 0;
+  }
+
   const totalTip = cardTip + cashTip;
 
   document.getElementById("delivery-card-tip").value = cardTip.toFixed(2);
+  if (!isInitialLoad || paymentType === "Cash") {
+    document.getElementById("delivery-cash-tip").value = cashTip.toFixed(2);
+  }
 
   // Calculate tip percentage based on subtotal
   let tipPercent = 0;
@@ -422,16 +443,25 @@ function calculateTip() {
 function toggleCardTipField() {
   const paymentType = document.getElementById("delivery-payment-type").value;
   const cardTipInput = document.getElementById("delivery-card-tip");
+  const cashTipInput = document.getElementById("delivery-cash-tip");
 
   if (paymentType === "Cash") {
+    // For Cash: card tip is 0 and read-only, cash tip is auto-calculated and read-only
     cardTipInput.disabled = true;
-    cardTipInput.value = "";
-    cardTipInput.style.background = "#e0e0e0";
+    cardTipInput.value = "0.00";
+    cardTipInput.style.background = "#f0f0f0";
+
+    cashTipInput.disabled = true;
+    cashTipInput.style.background = "#f0f0f0";
   } else {
+    // For Credit/Debit: card tip is auto-calculated and read-only, cash tip is editable
     cardTipInput.disabled = false;
-    cardTipInput.style.background = "#ffffff";
+    cardTipInput.style.background = "#f0f0f0";
+
+    cashTipInput.disabled = false;
+    cashTipInput.style.background = "#ffffff";
   }
-  calculateTip();
+  calculateTip(false);
 }
 
 // Calculate total mileage from starting and ending mileage
@@ -694,7 +724,7 @@ document.getElementById("edit-delivery-btn").addEventListener("click", () => {
     // Set additional cash tip and toggle field
     const additionalTipInput = document.getElementById("delivery-cash-tip");
     additionalTipInput.value = delivery.cash_tip || "";
-    toggleCardTipField();
+    toggleCardTipField(true);
 
     // Load shifts for dropdown filtered by delivery date
     loadShiftsForDropdown(delivery.date).then(() => {
