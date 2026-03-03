@@ -186,7 +186,9 @@ function loadDeliveriesSummary() {
             <div class="card green">Deliveries<br><strong>${summary.delivery_count}</strong></div>
             <div class="card green">Total Subtotal<br><strong>$${summary.total_subtotal.toFixed(2)}</strong></div>
             <div class="card green">Total Collected<br><strong>$${summary.total_collected.toFixed(2)}</strong></div>
-            <div class="card green">Total Tips<br><strong>$${summary.total_tips.toFixed(2)}</strong></div>
+            <div class="card green">Credit/Debit Tips<br><strong>$${summary.total_tips.toFixed(2)}</strong></div>
+            <div class="card green">Cash Tips<br><strong>$${summary.total_cash_tips.toFixed(2)}</strong></div>
+            <div class="card green">Total Tips<br><strong>$${(summary.total_tips + summary.total_cash_tips).toFixed(2)}</strong></div>
             <div class="card green">Avg Tip<br><strong>$${avgTip.toFixed(2)}</strong></div>
         `;
     },
