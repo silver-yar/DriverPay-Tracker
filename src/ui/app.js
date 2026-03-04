@@ -7,16 +7,21 @@ let currentShiftId = null;
 let deliveryModalMode = "add";
 let currentDeliveryId = null;
 let currentTab = "shifts";
+let selectedShiftIdForDeliveries = null;
+let currentDeliveryShiftId = null;
+let currentDeliveryDate = "";
 
 console.log("App.js loaded");
 
 new QWebChannel(qt.webChannelTransport, function (channel) {
   db = channel.objects.db;
   console.log("QWebChannel ready");
+  initPaymentTypeDropdown();
+  setSelectedPaymentType("Credit");
   loadDrivers();
 });
 
-function loadDrivers() {
+function loadDrivers(preferredDriverId = null) {
   db.get_drivers().then((driversJson) => {
     const drivers = JSON.parse(driversJson);
     const driverList = document.getElementById("driver-list");
@@ -28,8 +33,16 @@ function loadDrivers() {
       li.addEventListener("click", () => selectDriver(driver.id, li));
       driverList.appendChild(li);
     });
+
     if (drivers.length > 0) {
-      selectDriver(drivers[0].id, driverList.firstChild);
+      const preferred = preferredDriverId
+        ? driverList.querySelector(`li[data-id="${preferredDriverId}"]`)
+        : null;
+      const selectedElement = preferred || driverList.firstChild;
+      selectDriver(selectedElement.dataset.id, selectedElement);
+    } else {
+      currentDriverId = null;
+      clearDriverData();
     }
   });
 }
@@ -51,6 +64,15 @@ function selectDriver(driverId, element) {
     loadDeliveries();
     loadDeliveriesSummary();
   }
+}
+
+function clearDriverData() {
+  document.getElementById("modal-driver-name").textContent = "";
+  document.getElementById("delivery-modal-driver-name").textContent = "";
+  document.getElementById("shift-table").innerHTML = "";
+  document.getElementById("summary-cards").innerHTML = "";
+  document.getElementById("delivery-table").innerHTML = "";
+  document.getElementById("delivery-summary-cards").innerHTML = "";
 }
 
 // Tab Switching
@@ -77,11 +99,45 @@ function switchTab(tab) {
     loadShifts();
     loadSummary();
   } else {
+    const checkedShifts = document.querySelectorAll(
+      '#shift-table input[type="checkbox"]:checked',
+    );
+    if (checkedShifts.length !== 1) {
+      selectedShiftIdForDeliveries = null;
+      if (checkedShifts.length === 0) {
+        alert(
+          "Select exactly one shift in the Shifts tab before opening Deliveries.",
+        );
+      } else {
+        alert("Select only one shift to view deliveries for that shift.");
+      }
+    } else {
+      selectedShiftIdForDeliveries = checkedShifts[0].dataset.id;
+    }
+
     document.getElementById("deliveries-tab-btn").classList.add("active");
     document.getElementById("deliveries-section").classList.add("active");
     loadDeliveries();
     loadDeliveriesSummary();
   }
+}
+
+function renderDeliverySummaryCards(summary) {
+  const cards = document.getElementById("delivery-summary-cards");
+  const avgTip =
+    summary.delivery_count > 0
+      ? (summary.total_tips + summary.total_cash_tips) / summary.delivery_count
+      : 0;
+
+  cards.innerHTML = `
+            <div class="card green">Deliveries<br><strong>${summary.delivery_count}</strong></div>
+            <div class="card green">Total Subtotal<br><strong>$${summary.total_subtotal.toFixed(2)}</strong></div>
+            <div class="card green">Total Collected<br><strong>$${summary.total_collected.toFixed(2)}</strong></div>
+            <div class="card green">Credit/Debit Tips<br><strong>$${summary.total_tips.toFixed(2)}</strong></div>
+            <div class="card green">Cash Tips<br><strong>$${summary.total_cash_tips.toFixed(2)}</strong></div>
+            <div class="card green">Total Tips<br><strong>$${(summary.total_tips + summary.total_cash_tips).toFixed(2)}</strong></div>
+            <div class="card green">Avg Tip<br><strong>$${avgTip.toFixed(2)}</strong></div>
+        `;
 }
 
 // Shifts Functions
@@ -98,8 +154,6 @@ function loadShifts() {
                 <td>${shift.date}</td>
                 <td>${shift.start}</td>
                 <td>${shift.end}</td>
-                <td>${shift.starting_mileage}</td>
-                <td>${shift.ending_mileage}</td>
                 <td>${shift.mileage}</td>
                 <td class="green">${shift.cash}</td>
                 <td class="green">${shift.credit}</td>
@@ -132,9 +186,16 @@ function loadDeliveries() {
   db.get_deliveries(currentDriverId, startDate, endDate).then(
     (deliveriesJson) => {
       const deliveries = JSON.parse(deliveriesJson);
+      const filteredDeliveries = selectedShiftIdForDeliveries
+        ? deliveries.filter(
+            (delivery) =>
+              String(delivery.shift_id || "") ===
+              String(selectedShiftIdForDeliveries),
+          )
+        : [];
       const table = document.getElementById("delivery-table");
       table.innerHTML = "";
-      deliveries.forEach((delivery) => {
+      filteredDeliveries.forEach((delivery) => {
         const subtotal = parseFloat(delivery.order_subtotal.replace("$", ""));
         const card_tip = parseFloat(delivery.card_tip.replace("$", ""));
         const collected = parseFloat(
@@ -162,6 +223,7 @@ function loadDeliveries() {
                 <td>${delivery.payment_type}</td>
                 <td>${delivery.order_subtotal}</td>
                 <td>${delivery.amount_collected}</td>
+                <td>${parseFloat(delivery.mileage || 0).toFixed(2)}</td>
                 <td class="green">${delivery.card_tip}</td>
                 <td class="green">$${parseFloat(delivery.cash_tip || 0).toFixed(2)}</td>
                 <td>${tipPercent.toFixed(1)}%</td>
@@ -175,27 +237,49 @@ function loadDeliveries() {
 
 function loadDeliveriesSummary() {
   if (!currentDriverId) return;
-  db.get_deliveries_summary(currentDriverId, startDate, endDate).then(
-    (summaryJson) => {
-      const summary = JSON.parse(summaryJson);
-      const cards = document.getElementById("delivery-summary-cards");
-      // total_tips already includes cash_tip in database calculation
-      const avgTip =
-        summary.delivery_count > 0
-          ? (summary.total_tips + summary.total_cash_tips) /
-            summary.delivery_count
-          : 0;
-      cards.innerHTML = `
-            <div class="card green">Deliveries<br><strong>${summary.delivery_count}</strong></div>
-            <div class="card green">Total Subtotal<br><strong>$${summary.total_subtotal.toFixed(2)}</strong></div>
-            <div class="card green">Total Collected<br><strong>$${summary.total_collected.toFixed(2)}</strong></div>
-            <div class="card green">Credit/Debit Tips<br><strong>$${summary.total_tips.toFixed(2)}</strong></div>
-            <div class="card green">Cash Tips<br><strong>$${summary.total_cash_tips.toFixed(2)}</strong></div>
-            <div class="card green">Total Tips<br><strong>$${(summary.total_tips + summary.total_cash_tips).toFixed(2)}</strong></div>
-            <div class="card green">Avg Tip<br><strong>$${avgTip.toFixed(2)}</strong></div>
-        `;
-    },
-  );
+  if (!selectedShiftIdForDeliveries) {
+    renderDeliverySummaryCards({
+      total_subtotal: 0,
+      total_collected: 0,
+      total_tips: 0,
+      total_cash_tips: 0,
+      delivery_count: 0,
+    });
+    return;
+  }
+
+  db.get_deliveries(currentDriverId, startDate, endDate).then((deliveriesJson) => {
+    const deliveries = JSON.parse(deliveriesJson).filter(
+      (delivery) =>
+        String(delivery.shift_id || "") === String(selectedShiftIdForDeliveries),
+    );
+
+    const summary = deliveries.reduce(
+      (acc, delivery) => {
+        acc.total_subtotal += parseFloat(
+          String(delivery.order_subtotal || "$0").replace("$", ""),
+        );
+        acc.total_collected += parseFloat(
+          String(delivery.amount_collected || "$0").replace("$", ""),
+        );
+        acc.total_tips += parseFloat(
+          String(delivery.card_tip || "$0").replace("$", ""),
+        );
+        acc.total_cash_tips += parseFloat(delivery.cash_tip || 0);
+        acc.delivery_count += 1;
+        return acc;
+      },
+      {
+        total_subtotal: 0,
+        total_collected: 0,
+        total_tips: 0,
+        total_cash_tips: 0,
+        delivery_count: 0,
+      },
+    );
+
+    renderDeliverySummaryCards(summary);
+  });
 }
 
 // Search Button
@@ -209,6 +293,72 @@ document.getElementById("search-btn").addEventListener("click", () => {
     loadDeliveries();
     loadDeliveriesSummary();
   }
+});
+
+// Driver Modal Handlers
+function closeDriverModal() {
+  document.getElementById("driver-modal-title").textContent = "Add Driver";
+  document.getElementById("driver-name-label").textContent = "Driver Name:";
+  document.getElementById("driver-submit-btn").textContent = "Add Driver";
+  document.getElementById("driver-name-input").value = "";
+  document.getElementById("driver-modal").style.display = "none";
+}
+
+document.getElementById("add-driver-btn").addEventListener("click", () => {
+  document.getElementById("driver-modal-title").textContent = "Add Driver";
+  document.getElementById("driver-name-label").textContent = "Driver Name:";
+  document.getElementById("driver-submit-btn").textContent = "Add Driver";
+  document.getElementById("driver-name-input").value = "";
+  document.getElementById("driver-modal").style.display = "block";
+});
+
+document.getElementById("delete-driver-btn").addEventListener("click", () => {
+  if (!currentDriverId) {
+    alert("Please select a driver to delete.");
+    return;
+  }
+  const activeDriver = document.querySelector(".driver-list .active");
+  if (!activeDriver) {
+    alert("Please select a driver to delete.");
+    return;
+  }
+
+  const selectedDriverName = activeDriver.textContent.trim();
+  if (!confirm(`Delete selected driver "${selectedDriverName}"?`)) {
+    return;
+  }
+
+  db.delete_driver(selectedDriverName).then((resultJson) => {
+    const result = JSON.parse(resultJson);
+    if (!result.success) {
+      alert(result.error || "Unable to delete driver.");
+      return;
+    }
+    loadDrivers();
+  });
+});
+
+document
+  .getElementById("cancel-driver-modal")
+  .addEventListener("click", closeDriverModal);
+
+document.getElementById("driver-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const name = document.getElementById("driver-name-input").value.trim();
+  if (!name) {
+    alert("Driver name cannot be empty.");
+    return;
+  }
+
+  db.add_driver(name).then((resultJson) => {
+    const result = JSON.parse(resultJson);
+    if (!result.success) {
+      alert(result.error || "Unable to add driver.");
+      return;
+    }
+    closeDriverModal();
+    loadDrivers(result.driver_id);
+  });
 });
 
 // Settings Modal Handlers
@@ -390,6 +540,55 @@ document.getElementById("edit-shift-btn").addEventListener("click", () => {
 });
 
 // Delivery Modal Handlers
+const PAYMENT_TYPE_LABELS = {
+  Credit: "Credit (auto-calculated)",
+  Debit: "Debit (auto-calculated)",
+  Cash: "Cash (auto-calculated)",
+};
+
+function getSelectedPaymentType() {
+  return document.getElementById("delivery-payment-type").value;
+}
+
+function setSelectedPaymentType(paymentType) {
+  const safeValue = PAYMENT_TYPE_LABELS[paymentType] ? paymentType : "Credit";
+  document.getElementById("delivery-payment-type").value = safeValue;
+  document.getElementById("delivery-payment-toggle").textContent =
+    PAYMENT_TYPE_LABELS[safeValue];
+}
+
+function setPaymentDropdownOpen(isOpen) {
+  const dropdown = document.getElementById("delivery-payment-dropdown");
+  const toggle = document.getElementById("delivery-payment-toggle");
+  dropdown.classList.toggle("open", isOpen);
+  toggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
+}
+
+function initPaymentTypeDropdown() {
+  const dropdown = document.getElementById("delivery-payment-dropdown");
+  const toggle = document.getElementById("delivery-payment-toggle");
+  const options = dropdown.querySelectorAll(".custom-dropdown-option");
+
+  toggle.addEventListener("click", () => {
+    const isOpen = dropdown.classList.contains("open");
+    setPaymentDropdownOpen(!isOpen);
+  });
+
+  options.forEach((option) => {
+    option.addEventListener("click", () => {
+      setSelectedPaymentType(option.dataset.value);
+      setPaymentDropdownOpen(false);
+      toggleCardTipField();
+    });
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!dropdown.contains(event.target)) {
+      setPaymentDropdownOpen(false);
+    }
+  });
+}
+
 function validateCurrencyInput(input) {
   const value = parseFloat(input.value);
 
@@ -438,7 +637,7 @@ function calculateTip(isInitialLoad = false) {
     parseFloat(document.getElementById("delivery-subtotal").value) || 0;
   const collected =
     parseFloat(document.getElementById("delivery-collected").value) || 0;
-  const paymentType = document.getElementById("delivery-payment-type").value;
+  const paymentType = getSelectedPaymentType();
 
   let cardTip, cashTip;
 
@@ -476,7 +675,7 @@ function calculateTip(isInitialLoad = false) {
 }
 
 function toggleCardTipField() {
-  const paymentType = document.getElementById("delivery-payment-type").value;
+  const paymentType = getSelectedPaymentType();
   const cardTipInput = document.getElementById("delivery-card-tip");
   const cashTipInput = document.getElementById("delivery-cash-tip");
 
@@ -526,6 +725,8 @@ function closeShiftModal() {
 function closeDeliveryModal() {
   deliveryModalMode = "add";
   currentDeliveryId = null;
+  currentDeliveryShiftId = null;
+  currentDeliveryDate = "";
   document.getElementById("delivery-modal-title").textContent =
     "Add New Delivery";
   document.querySelector(
@@ -534,6 +735,8 @@ function closeDeliveryModal() {
   document.getElementById("delivery-id").value = "";
   document.getElementById("add-delivery-modal").style.display = "none";
   document.getElementById("add-delivery-form").reset();
+  setSelectedPaymentType("Credit");
+  setPaymentDropdownOpen(false);
 }
 
 // Add event listeners for mileage calculation
@@ -544,34 +747,15 @@ document
   .getElementById("shift-ending-mileage")
   .addEventListener("input", calculateMileage);
 
-// Function to populate shift dropdown
-function loadShiftsForDropdown(date = "") {
-  const shiftSelect = document.getElementById("delivery-shift");
-  shiftSelect.innerHTML = '<option value="">No Shift</option>';
-
-  if (!currentDriverId) return;
-
-  return db
-    .get_shifts_for_dropdown(currentDriverId, date)
-    .then((shiftsJson) => {
-      const shifts = JSON.parse(shiftsJson);
-      shifts.forEach((shift) => {
-        const option = document.createElement("option");
-        option.value = shift.id;
-        option.textContent = `${shift.date} (${shift.start} - ${shift.end})`;
-        shiftSelect.appendChild(option);
-      });
-    });
-}
-
-// Reload shifts dropdown when delivery date changes
-document.getElementById("delivery-date").addEventListener("change", (e) => {
-  loadShiftsForDropdown(e.target.value);
-});
-
 document.getElementById("add-delivery-btn").addEventListener("click", () => {
+  if (!selectedShiftIdForDeliveries) {
+    alert("Select one shift in the Shifts tab before adding a delivery.");
+    return;
+  }
+
   deliveryModalMode = "add";
   currentDeliveryId = null;
+  currentDeliveryShiftId = selectedShiftIdForDeliveries;
   document.getElementById("delivery-modal-title").textContent =
     "Add New Delivery";
   document.querySelector(
@@ -581,14 +765,24 @@ document.getElementById("add-delivery-btn").addEventListener("click", () => {
     document.querySelector(".driver-list .active").textContent;
   document.getElementById("delivery-id").value = "";
   document.getElementById("add-delivery-form").reset();
+  setSelectedPaymentType("Credit");
+  document.getElementById("delivery-date").value = "";
+  currentDeliveryDate = "";
 
-  // Load shifts for dropdown
-  loadShiftsForDropdown();
+  db.get_shift(currentDeliveryShiftId).then((shiftJson) => {
+    const shift = JSON.parse(shiftJson);
+    if (!shift.id) {
+      alert("Selected shift not found.");
+      return;
+    }
+    currentDeliveryDate = shift.date;
+    document.getElementById("delivery-date").value = shift.date;
 
-  // Reset card tip field state
-  toggleCardTipField();
+    // Reset card tip field state
+    toggleCardTipField();
 
-  document.getElementById("add-delivery-modal").style.display = "block";
+    document.getElementById("add-delivery-modal").style.display = "block";
+  });
 });
 
 document
@@ -620,11 +814,11 @@ document
     validateCurrencyInput(this);
     calculateTip();
   });
-
-// Add payment type change listener
 document
-  .getElementById("delivery-payment-type")
-  .addEventListener("change", toggleCardTipField);
+  .getElementById("delivery-mileage")
+  .addEventListener("blur", function () {
+    validateCurrencyInput(this);
+  });
 
 document.getElementById("add-delivery-form").addEventListener("submit", (e) => {
   e.preventDefault();
@@ -645,12 +839,20 @@ document.getElementById("add-delivery-form").addEventListener("submit", (e) => {
     return;
   }
 
-  const date = document.getElementById("delivery-date").value;
+  const date = currentDeliveryDate || document.getElementById("delivery-date").value;
   const orderNum = document.getElementById("delivery-order-num").value;
-  const shiftId = document.getElementById("delivery-shift").value;
-  const paymentType = document.getElementById("delivery-payment-type").value;
+  const shiftId =
+    deliveryModalMode === "edit"
+      ? currentDeliveryShiftId
+      : selectedShiftIdForDeliveries;
+  const paymentType = getSelectedPaymentType();
   const subtotal = parseFloat(subtotalInput.value);
   const collected = parseFloat(collectedInput.value);
+  const mileageInput = document.getElementById("delivery-mileage");
+  if (!validateCurrencyInput(mileageInput)) {
+    return;
+  }
+  const mileage = parseFloat(mileageInput.value);
   const cashTip = parseFloat(
     document.getElementById("delivery-cash-tip").value,
   );
@@ -662,8 +864,20 @@ document.getElementById("add-delivery-form").addEventListener("submit", (e) => {
     : parseFloat(cardTipInput.value) || 0;
 
   // Additional validation: ensure values are non-negative
-  if (subtotal < 0 || collected < 0) {
-    alert("Subtotal and Amount Collected must be non-negative values.");
+  if (subtotal < 0 || collected < 0 || mileage < 0) {
+    alert("Subtotal, Amount Collected, and Mileage must be non-negative values.");
+    return;
+  }
+  if (Number.isNaN(mileage)) {
+    alert("Mileage is required.");
+    return;
+  }
+  if (!date) {
+    alert("Unable to determine delivery date from the selected shift.");
+    return;
+  }
+  if (!shiftId) {
+    alert("Select one shift before saving deliveries.");
     return;
   }
 
@@ -678,6 +892,7 @@ document.getElementById("add-delivery-form").addEventListener("submit", (e) => {
       collected,
       cardTip,
       cashTip,
+      mileage,
     );
   } else {
     db.add_delivery(
@@ -690,6 +905,7 @@ document.getElementById("add-delivery-form").addEventListener("submit", (e) => {
       collected,
       cardTip,
       cashTip,
+      mileage,
     );
   }
   closeDeliveryModal();
@@ -738,6 +954,7 @@ document.getElementById("edit-delivery-btn").addEventListener("click", () => {
     }
     deliveryModalMode = "edit";
     currentDeliveryId = deliveryId;
+    currentDeliveryShiftId = delivery.shift_id || selectedShiftIdForDeliveries;
     document.getElementById("delivery-modal-title").textContent =
       "Edit Delivery";
     document.querySelector(
@@ -747,27 +964,21 @@ document.getElementById("edit-delivery-btn").addEventListener("click", () => {
       document.querySelector(".driver-list .active").textContent;
     document.getElementById("delivery-id").value = delivery.id;
     document.getElementById("delivery-date").value = delivery.date;
+    currentDeliveryDate = delivery.date;
     document.getElementById("delivery-order-num").value =
       delivery.order_num || "";
-    document.getElementById("delivery-payment-type").value =
-      delivery.payment_type;
+    setSelectedPaymentType(delivery.payment_type);
     document.getElementById("delivery-subtotal").value =
       delivery.order_subtotal;
     document.getElementById("delivery-collected").value =
       delivery.amount_collected;
+    document.getElementById("delivery-mileage").value = delivery.mileage;
 
     // Set additional cash tip and toggle field
     const additionalTipInput = document.getElementById("delivery-cash-tip");
     additionalTipInput.value = delivery.cash_tip || "";
-    toggleCardTipField(true);
-
-    // Load shifts for dropdown filtered by delivery date
-    loadShiftsForDropdown(delivery.date).then(() => {
-      const shiftSelect = document.getElementById("delivery-shift");
-      shiftSelect.value = delivery.shift_id || "";
-    });
-
-    calculateTip();
+    toggleCardTipField();
+    calculateTip(true);
     document.getElementById("add-delivery-modal").style.display = "block";
   });
 });

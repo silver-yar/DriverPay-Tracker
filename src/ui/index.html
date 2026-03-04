@@ -22,6 +22,12 @@
                 <button id="search-btn">Search</button>
                 <h3>Drivers</h3>
                 <ul class="driver-list" id="driver-list"></ul>
+                <div class="driver-actions">
+                    <button id="add-driver-btn">Add Driver</button>
+                    <button id="delete-driver-btn" class="danger">
+                        Delete Driver
+                    </button>
+                </div>
                 <button id="settings-btn" style="margin-top: 20px">
                     Settings
                 </button>
@@ -44,8 +50,6 @@
                                 <th>Date</th>
                                 <th>Start</th>
                                 <th>End</th>
-                                <th>Start Mileage</th>
-                                <th>End Mileage</th>
                                 <th>Total Mileage</th>
                                 <th>Cash Tips</th>
                                 <th>Credit Tips</th>
@@ -75,6 +79,7 @@
                                 <th>Payment Type</th>
                                 <th>Subtotal</th>
                                 <th>Amount Collected</th>
+                                <th>Mileage</th>
                                 <th>Credit/Debit Tip</th>
                                 <th>Cash Tip</th>
                                 <th>Tip %</th>
@@ -145,60 +150,12 @@
                             >End Time:
                             <input type="time" id="shift-end" required /></label
                         ><br /><br />
-                        <label
-                            >Starting Mileage:
-                            <input
-                                type="number"
-                                step="0.1"
-                                min="0"
-                                id="shift-starting-mileage"
-                                required /></label
-                        ><br /><br />
-                        <label
-                            >Ending Mileage:
-                            <input
-                                type="number"
-                                step="0.1"
-                                min="0"
-                                id="shift-ending-mileage"
-                                required /></label
-                        ><br /><br />
-                        <label
-                            >Total Mileage:
-                            <input
-                                type="number"
-                                step="0.1"
-                                id="shift-mileage"
-                                readonly
-                                style="background: #f0f0f0" /></label
-                        ><br /><br />
-                        <label
-                            >Cash Tips:
-                            <input
-                                type="number"
-                                step="0.01"
-                                id="shift-cash"
-                                readonly
-                                style="background: #f0f0f0" /></label
-                        ><br /><br />
-                        <label
-                            >Credit Tips:
-                            <input
-                                type="number"
-                                step="0.01"
-                                id="shift-credit"
-                                readonly
-                                style="background: #f0f0f0" /></label
-                        ><br /><br />
-                        <label
-                            >Owed:
-                            <input
-                                type="number"
-                                step="0.01"
-                                id="shift-owed"
-                                readonly
-                                style="background: #f0f0f0" /></label
-                        ><br /><br />
+                        <input type="hidden" id="shift-starting-mileage" value="0" />
+                        <input type="hidden" id="shift-ending-mileage" value="0" />
+                        <input type="hidden" id="shift-mileage" value="0" />
+                        <input type="hidden" id="shift-cash" value="0" />
+                        <input type="hidden" id="shift-credit" value="0" />
+                        <input type="hidden" id="shift-owed" value="0" />
                         <label
                             >Mileage Rate:
                             <input
@@ -244,13 +201,7 @@
                             <span id="delivery-modal-driver-name"></span></label
                         ><br /><br />
                         <input type="hidden" id="delivery-id" value="" />
-                        <label
-                            >Date:
-                            <input
-                                type="date"
-                                id="delivery-date"
-                                required /></label
-                        ><br /><br />
+                        <input type="hidden" id="delivery-date" value="" />
                         <label
                             >Order Number:
                             <input
@@ -260,24 +211,53 @@
                                 required /></label
                         ><br /><br />
                         <label
-                            >Shift:
-                            <select id="delivery-shift">
-                                <option value="">No Shift</option>
-                            </select></label
-                        ><br /><br />
-                        <label
                             >Payment Type:
-                            <select id="delivery-payment-type" required>
-                                <option value="Credit">
+                            <input
+                                type="hidden"
+                                id="delivery-payment-type"
+                                value="Credit" />
+                            <div
+                                class="custom-dropdown"
+                                id="delivery-payment-dropdown"
+                            >
+                                <button
+                                    type="button"
+                                    class="custom-dropdown-toggle"
+                                    id="delivery-payment-toggle"
+                                    aria-haspopup="listbox"
+                                    aria-expanded="false"
+                                >
                                     Credit (auto-calculated)
-                                </option>
-                                <option value="Debit">
-                                    Debit (auto-calculated)
-                                </option>
-                                <option value="Cash">
-                                    Cash (auto-calculated)
-                                </option>
-                            </select> </label
+                                </button>
+                                <div
+                                    class="custom-dropdown-menu"
+                                    id="delivery-payment-menu"
+                                    role="listbox"
+                                >
+                                    <button
+                                        type="button"
+                                        class="custom-dropdown-option"
+                                        data-value="Credit"
+                                    >
+                                        Credit (auto-calculated)
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="custom-dropdown-option"
+                                        data-value="Debit"
+                                    >
+                                        Debit (auto-calculated)
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="custom-dropdown-option"
+                                        data-value="Cash"
+                                    >
+                                        Cash (auto-calculated)
+                                    </button>
+                                </div>
+                            </div>
+                        </label
                         ><br /><br />
                         <label
                             >Order Subtotal:
@@ -295,6 +275,15 @@
                                 step="0.01"
                                 min="0"
                                 id="delivery-collected"
+                                required /></label
+                        ><br /><br />
+                        <label
+                            >Mileage:
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                id="delivery-mileage"
                                 required /></label
                         ><br /><br />
                         <label
@@ -326,6 +315,47 @@
                         ><br /><br />
                         <button type="submit">Add Delivery</button>
                         <button type="button" id="cancel-delivery-add">
+                            Cancel
+                        </button>
+                    </form>
+                </div>
+            </div>
+            <div
+                id="driver-modal"
+                style="
+                    display: none;
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.5);
+                    z-index: 1000;
+                "
+            >
+                <div
+                    style="
+                        position: absolute;
+                        top: 50%;
+                        left: 50%;
+                        transform: translate(-50%, -50%);
+                        background: white;
+                        padding: 20px;
+                        border-radius: 5px;
+                        width: 320px;
+                    "
+                >
+                    <h2 id="driver-modal-title">Add Driver</h2>
+                    <form id="driver-form">
+                        <label for="driver-name-input" id="driver-name-label"
+                            >Driver Name:</label
+                        ><br /><br />
+                        <input type="text" id="driver-name-input" required />
+                        <br /><br />
+                        <button type="submit" id="driver-submit-btn">
+                            Add Driver
+                        </button>
+                        <button type="button" id="cancel-driver-modal">
                             Cancel
                         </button>
                     </form>
