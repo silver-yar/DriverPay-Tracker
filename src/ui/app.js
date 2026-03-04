@@ -103,7 +103,7 @@ function loadShifts() {
                 <td>${shift.mileage}</td>
                 <td class="green">${shift.cash}</td>
                 <td class="green">${shift.credit}</td>
-                <td class="${shift.owed.startsWith("-") ? "red" : "green"}">${shift.owed}</td>
+                <td class="${shift.owed.startsWith("$-") ? "red" : "green"}">${shift.owed}</td>
                 <td>${shift.mileage_rate}</td>
             `;
       table.appendChild(row);
@@ -291,7 +291,8 @@ document.getElementById("add-shift-form").addEventListener("submit", (e) => {
 
   const cash = parseFloat(document.getElementById("shift-cash").value);
   const credit = parseFloat(document.getElementById("shift-credit").value);
-  const owed = parseFloat(document.getElementById("shift-owed").value);
+  // Owed is auto-calculated from deliveries, pass 0 here
+  const owed = 0;
   if (modalMode === "edit") {
     db.update_shift(
       currentShiftId,

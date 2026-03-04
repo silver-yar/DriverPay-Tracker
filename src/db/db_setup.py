@@ -97,11 +97,14 @@ def create_database():
         VALUES (1, 2, '2026-01-06', '#1004', 'Credit', 20.00, 25.00, 5.00, 0)
     """)
 
-    # Update shift tip totals from deliveries
+    # Update shift tip totals and owed from deliveries
     cursor.execute("""
         UPDATE shifts SET
             credit_tips = (SELECT COALESCE(SUM(card_tip), 0) FROM deliveries WHERE shift_id = shifts.id),
-            cash_tips = (SELECT COALESCE(SUM(cash_tip), 0) FROM deliveries WHERE shift_id = shifts.id)
+            cash_tips = (SELECT COALESCE(SUM(cash_tip), 0) FROM deliveries WHERE shift_id = shifts.id),
+            owed = (SELECT COALESCE(SUM(card_tip), 0) FROM deliveries WHERE shift_id = shifts.id) +
+                   (SELECT COALESCE(SUM(cash_tip), 0) FROM deliveries WHERE shift_id = shifts.id) -
+                   (SELECT COALESCE(SUM(CASE WHEN payment_type = 'Cash' THEN amount_collected ELSE 0 END), 0) FROM deliveries WHERE shift_id = shifts.id)
     """)
 
     conn.commit()

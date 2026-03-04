@@ -29,7 +29,8 @@ class DBHandler(QObject):
            SELECT s.id, s.date, s.start_time, s.end_time, s.starting_mileage, s.ending_mileage, s.mileage, s.owed, s.mileage_rate,
                   s.cash_tips as stored_cash_tips, s.credit_tips as stored_credit_tips,
                   COALESCE(SUM(d.card_tip), 0) as calculated_credit_tips,
-                  COALESCE(SUM(d.cash_tip), 0) as calculated_cash_tips
+                  COALESCE(SUM(d.cash_tip), 0) as calculated_cash_tips,
+                  COALESCE(SUM(CASE WHEN d.payment_type = 'Cash' THEN d.amount_collected ELSE 0 END), 0) as cash_collected
            FROM shifts s
            LEFT JOIN deliveries d ON s.id = d.shift_id
            WHERE s.driver_id = ?
@@ -54,6 +55,9 @@ class DBHandler(QObject):
                 if row["calculated_cash_tips"] > 0
                 else row["stored_cash_tips"]
             )
+            cash_collected = row["cash_collected"] or 0
+            # Owed = (credit tips + cash tips) - cash collected
+            owed = (credit_tips + cash_tips) - cash_collected
             result.append(
                 {
                     "id": row["id"],
@@ -65,7 +69,7 @@ class DBHandler(QObject):
                     "mileage": row["mileage"],
                     "cash": f"${cash_tips:.2f}",
                     "credit": f"${credit_tips:.2f}",
-                    "owed": f"${row['owed']:.2f}",
+                    "owed": f"${owed:.2f}",
                     "mileage_rate": f"${row['mileage_rate']:.2f}",
                 }
             )
