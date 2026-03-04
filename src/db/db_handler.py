@@ -27,8 +27,9 @@ class DBHandler(QObject):
         cursor = self.conn.cursor()
         query = """
            SELECT s.id, s.date, s.start_time, s.end_time, s.starting_mileage, s.ending_mileage, s.mileage, s.owed, s.mileage_rate,
-                  COALESCE(SUM(d.card_tip), 0) as credit_tips,
-                  COALESCE(SUM(d.cash_tip), 0) as cash_tips
+                  s.cash_tips as stored_cash_tips, s.credit_tips as stored_credit_tips,
+                  COALESCE(SUM(d.card_tip), 0) as calculated_credit_tips,
+                  COALESCE(SUM(d.cash_tip), 0) as calculated_cash_tips
            FROM shifts s
            LEFT JOIN deliveries d ON s.id = d.shift_id
            WHERE s.driver_id = ?
@@ -42,6 +43,17 @@ class DBHandler(QObject):
         shifts = cursor.fetchall()
         result = []
         for row in shifts:
+            # Use calculated tips from deliveries if available, otherwise use stored values
+            credit_tips = (
+                row["calculated_credit_tips"]
+                if row["calculated_credit_tips"] > 0
+                else row["stored_credit_tips"]
+            )
+            cash_tips = (
+                row["calculated_cash_tips"]
+                if row["calculated_cash_tips"] > 0
+                else row["stored_cash_tips"]
+            )
             result.append(
                 {
                     "id": row["id"],
@@ -51,8 +63,8 @@ class DBHandler(QObject):
                     "starting_mileage": row["starting_mileage"],
                     "ending_mileage": row["ending_mileage"],
                     "mileage": row["mileage"],
-                    "cash": f"${row['cash_tips']:.2f}",
-                    "credit": f"${row['credit_tips']:.2f}",
+                    "cash": f"${cash_tips:.2f}",
+                    "credit": f"${credit_tips:.2f}",
                     "owed": f"${row['owed']:.2f}",
                     "mileage_rate": f"${row['mileage_rate']:.2f}",
                 }
