@@ -208,6 +208,29 @@ document.getElementById("search-btn").addEventListener("click", () => {
   }
 });
 
+// Settings Modal Handlers
+document.getElementById("settings-btn").addEventListener("click", () => {
+  db.get_settings().then((settingsJson) => {
+    const settings = JSON.parse(settingsJson);
+    document.getElementById("settings-mileage-rate").value =
+      settings.default_mileage_rate;
+    document.getElementById("settings-modal").style.display = "block";
+  });
+});
+
+document.getElementById("cancel-settings").addEventListener("click", () => {
+  document.getElementById("settings-modal").style.display = "none";
+});
+
+document.getElementById("settings-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const mileageRate = parseFloat(
+    document.getElementById("settings-mileage-rate").value,
+  );
+  db.update_settings(mileageRate);
+  document.getElementById("settings-modal").style.display = "none";
+});
+
 // Shift Modal Handlers
 document.getElementById("add-shift-btn").addEventListener("click", () => {
   modalMode = "add";
@@ -219,6 +242,14 @@ document.getElementById("add-shift-btn").addEventListener("click", () => {
     document.querySelector(".driver-list .active").textContent;
   document.getElementById("shift-id").value = "";
   document.getElementById("add-shift-form").reset();
+
+  // Load default mileage rate from settings
+  db.get_settings().then((settingsJson) => {
+    const settings = JSON.parse(settingsJson);
+    document.getElementById("shift-mileage-rate").value =
+      settings.default_mileage_rate;
+  });
+
   document.getElementById("add-shift-modal").style.display = "block";
 });
 

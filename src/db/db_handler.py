@@ -446,3 +446,23 @@ class DBHandler(QObject):
                 }
             )
         return json.dumps(result)
+
+    @Slot(result=str)
+    def get_settings(self):
+        """Get application settings."""
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT default_mileage_rate FROM settings WHERE id = 1")
+        row = cursor.fetchone()
+        if row:
+            return json.dumps({"default_mileage_rate": row["default_mileage_rate"]})
+        return json.dumps({"default_mileage_rate": 0.65})
+
+    @Slot(float)
+    def update_settings(self, default_mileage_rate):
+        """Update application settings."""
+        cursor = self.conn.cursor()
+        cursor.execute(
+            "UPDATE settings SET default_mileage_rate = ? WHERE id = 1",
+            (default_mileage_rate,),
+        )
+        self.conn.commit()

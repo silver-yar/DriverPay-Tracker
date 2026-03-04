@@ -51,6 +51,19 @@ def create_database():
         )
     """)
 
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS settings (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            default_mileage_rate REAL NOT NULL DEFAULT 0.65
+        )
+    """)
+
+    # Insert default settings if not exists
+    cursor.execute("""
+        INSERT OR IGNORE INTO settings (id, default_mileage_rate)
+        VALUES (1, 0.65)
+    """)
+
     # Sample data
     cursor.execute("INSERT OR IGNORE INTO drivers (name) VALUES ('John Smith')")
     cursor.execute("INSERT OR IGNORE INTO drivers (name) VALUES ('Sarah Davis')")
