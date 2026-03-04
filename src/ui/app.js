@@ -142,8 +142,10 @@ function loadDeliveries() {
         );
         const cashTip = delivery.cash_tip || 0;
         const totalTip = card_tip + cashTip;
-        // Tip already includes additional cash tip in database
-        const total = collected + cashTip;
+        // For Cash payments, amount collected already includes cash tip
+        // For Credit/Debit, we add cash tip to get total
+        const total =
+          delivery.payment_type === "Cash" ? collected : collected + cashTip;
         // Calculate tip percentage based on amount collected
         let tipPercent = 0;
         if (collected > 0) {
@@ -180,7 +182,8 @@ function loadDeliveriesSummary() {
       // total_tips already includes cash_tip in database calculation
       const avgTip =
         summary.delivery_count > 0
-          ? summary.total_tips / summary.delivery_count
+          ? (summary.total_tips + summary.total_cash_tips) /
+            summary.delivery_count
           : 0;
       cards.innerHTML = `
             <div class="card green">Deliveries<br><strong>${summary.delivery_count}</strong></div>
