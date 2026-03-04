@@ -41,6 +41,7 @@ def setup_database(conn):
         CREATE TABLE deliveries (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             driver_id INTEGER NOT NULL,
+            shift_id INTEGER,
             date TEXT NOT NULL,
             order_num TEXT,
             payment_type TEXT NOT NULL,
@@ -48,9 +49,17 @@ def setup_database(conn):
             amount_collected REAL NOT NULL,
             card_tip REAL NOT NULL,
             cash_tip REAL DEFAULT 0.0,
-            FOREIGN KEY (driver_id) REFERENCES drivers (id)
+            FOREIGN KEY (driver_id) REFERENCES drivers (id),
+            FOREIGN KEY (shift_id) REFERENCES shifts (id)
         )
     """)
+    cursor.execute("""
+        CREATE TABLE settings (
+            id INTEGER PRIMARY KEY CHECK (id = 1),
+            default_mileage_rate REAL NOT NULL DEFAULT 0.65
+        )
+    """)
+    cursor.execute("INSERT INTO settings (id, default_mileage_rate) VALUES (1, 0.65)")
     # Sample shift data
     cursor.execute("INSERT INTO drivers (name) VALUES ('John Smith')")
     cursor.execute("INSERT INTO drivers (name) VALUES ('Sarah Davis')")
@@ -62,13 +71,13 @@ def setup_database(conn):
     )
     # Sample delivery data
     cursor.execute(
-        "INSERT INTO deliveries (driver_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip) VALUES (1, '2023-01-01', '#1001', 'Credit', 25.00, 30.00, 5.00, 2.00)"
+        "INSERT INTO deliveries (driver_id, shift_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip) VALUES (1, 1, '2023-01-01', '#1001', 'Credit', 25.00, 30.00, 5.00, 2.00)"
     )
     cursor.execute(
-        "INSERT INTO deliveries (driver_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip) VALUES (1, '2023-01-02', '#1002', 'Cash', 40.00, 45.00, 5.00, 0.00)"
+        "INSERT INTO deliveries (driver_id, shift_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip) VALUES (1, 2, '2023-01-02', '#1002', 'Cash', 40.00, 45.00, 5.00, 0.00)"
     )
     cursor.execute(
-        "INSERT INTO deliveries (driver_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip) VALUES (2, '2023-01-01', '#2001', 'Debit', 18.50, 22.00, 3.50, 1.50)"
+        "INSERT INTO deliveries (driver_id, shift_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip) VALUES (2, NULL, '2023-01-01', '#2001', 'Debit', 18.50, 22.00, 3.50, 1.50)"
     )
     conn.commit()
 
@@ -173,7 +182,9 @@ def test_get_delivery(db_handler):
 
 
 def test_add_delivery(db_handler):
-    db_handler.add_delivery(1, "2023-01-03", "#1003", "Debit", 32.00, 38.00, 6.00)
+    db_handler.add_delivery(
+        1, None, "2023-01-03", "#1003", "Debit", 32.00, 38.00, 6.00, 0
+    )
     deliveries = db_handler.get_deliveries(1)
     import json
 
@@ -183,7 +194,7 @@ def test_add_delivery(db_handler):
 
 def test_update_delivery(db_handler):
     db_handler.update_delivery(
-        1, "2023-01-01", "#1001-UPDATED", "Cash", 26.00, 31.00, 5.00
+        1, 1, "2023-01-01", "#1001-UPDATED", "Cash", 26.00, 31.00, 5.00, 0
     )
     delivery = db_handler.get_delivery(1)
     import json
@@ -219,7 +230,7 @@ def test_add_delivery_negative_subtotal(db_handler):
     import json
 
     result = db_handler.add_delivery(
-        1, "2023-01-03", "#1003", "Cash", -10.00, 15.00, 5.00
+        1, None, "2023-01-03", "#1003", "Cash", -10.00, 15.00, 5.00, 0
     )
     result_dict = json.loads(result)
     assert result_dict["success"] == False
@@ -230,7 +241,7 @@ def test_add_delivery_negative_collected(db_handler):
     import json
 
     result = db_handler.add_delivery(
-        1, "2023-01-03", "#1003", "Cash", 10.00, -5.00, -15.00
+        1, None, "2023-01-03", "#1003", "Cash", 10.00, -5.00, -15.00, 0
     )
     result_dict = json.loads(result)
     assert result_dict["success"] == False
@@ -241,7 +252,7 @@ def test_add_delivery_too_many_decimals(db_handler):
     import json
 
     result = db_handler.add_delivery(
-        1, "2023-01-03", "#1003", "Cash", 10.999, 15.00, 4.001
+        1, None, "2023-01-03", "#1003", "Cash", 10.999, 15.00, 4.001, 0
     )
     result_dict = json.loads(result)
     assert result_dict["success"] == False
@@ -252,7 +263,7 @@ def test_add_delivery_valid_values(db_handler):
     import json
 
     result = db_handler.add_delivery(
-        1, "2023-01-03", "#1003", "Credit", 25.50, 32.75, 7.25
+        1, None, "2023-01-03", "#1003", "Credit", 25.50, 32.75, 7.25, 0
     )
     result_dict = json.loads(result)
     assert result_dict["success"] == True
@@ -263,7 +274,7 @@ def test_add_delivery_collected_less_than_subtotal(db_handler):
 
     # Test that amount collected cannot be less than subtotal
     result = db_handler.add_delivery(
-        1, "2023-01-03", "#1003", "Cash", 30.00, 25.00, -5.00
+        1, None, "2023-01-03", "#1003", "Cash", 30.00, 25.00, -5.00, 0
     )
     result_dict = json.loads(result)
     assert result_dict["success"] == False
@@ -278,21 +289,21 @@ def test_update_delivery_validation(db_handler):
 
     # Test update with negative value
     result = db_handler.update_delivery(
-        1, "2023-01-01", "#1001", "Cash", -5.00, 10.00, 15.00
+        1, 1, "2023-01-01", "#1001", "Cash", -5.00, 10.00, 15.00, 0
     )
     result_dict = json.loads(result)
     assert result_dict["success"] == False
 
     # Test update with too many decimals
     result = db_handler.update_delivery(
-        1, "2023-01-01", "#1001", "Cash", 25.123, 30.00, 4.877
+        1, 1, "2023-01-01", "#1001", "Cash", 25.123, 30.00, 4.877, 0
     )
     result_dict = json.loads(result)
     assert result_dict["success"] == False
 
     # Test update with collected less than subtotal
     result = db_handler.update_delivery(
-        1, "2023-01-01", "#1001", "Cash", 40.00, 35.00, -5.00
+        1, 1, "2023-01-01", "#1001", "Cash", 40.00, 35.00, -5.00, 0
     )
     result_dict = json.loads(result)
     assert result_dict["success"] == False
@@ -303,7 +314,24 @@ def test_update_delivery_validation(db_handler):
 
     # Test update with valid values
     result = db_handler.update_delivery(
-        1, "2023-01-01", "#1001", "Debit", 26.00, 31.50, 5.50
+        1, 1, "2023-01-01", "#1001", "Debit", 26.00, 31.50, 5.50, 0
     )
     result_dict = json.loads(result)
     assert result_dict["success"] == True
+
+
+def test_get_settings(db_handler):
+    settings = db_handler.get_settings()
+    import json
+
+    settings_dict = json.loads(settings)
+    assert settings_dict["default_mileage_rate"] == 0.65
+
+
+def test_update_settings(db_handler):
+    db_handler.update_settings(0.75)
+    settings = db_handler.get_settings()
+    import json
+
+    settings_dict = json.loads(settings)
+    assert settings_dict["default_mileage_rate"] == 0.75
