@@ -14,6 +14,22 @@ class DBHandler(QObject):
             )
         self.conn = sqlite3.connect(db_path)
         self.conn.row_factory = sqlite3.Row
+        self._ensure_delivery_mileage_column()
+
+    def _ensure_delivery_mileage_column(self):
+        """Ensure legacy databases include the deliveries.mileage column."""
+        cursor = self.conn.cursor()
+        cursor.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='deliveries'"
+        )
+        if cursor.fetchone() is None:
+            return
+
+        cursor.execute("PRAGMA table_info(deliveries)")
+        columns = [row["name"] for row in cursor.fetchall()]
+        if "mileage" not in columns:
+            cursor.execute("ALTER TABLE deliveries ADD COLUMN mileage REAL DEFAULT 0.0")
+            self.conn.commit()
 
     @Slot(result=str)
     def get_drivers(self):
@@ -22,42 +38,64 @@ class DBHandler(QObject):
         drivers = cursor.fetchall()
         return json.dumps([dict(row) for row in drivers])
 
+    @Slot(str, result=str)
+    def add_driver(self, name):
+        clean_name = (name or "").strip()
+        if not clean_name:
+            return json.dumps(
+                {"success": False, "error": "Driver name cannot be empty."}
+            )
+
+        cursor = self.conn.cursor()
+        try:
+            cursor.execute("INSERT INTO drivers (name) VALUES (?)", (clean_name,))
+            self.conn.commit()
+            return json.dumps(
+                {"success": True, "driver_id": cursor.lastrowid, "name": clean_name}
+            )
+        except sqlite3.IntegrityError:
+            return json.dumps({"success": False, "error": "Driver already exists."})
+
+    @Slot(str, result=str)
+    def delete_driver(self, name):
+        clean_name = (name or "").strip()
+        if not clean_name:
+            return json.dumps(
+                {"success": False, "error": "Driver name cannot be empty."}
+            )
+
+        cursor = self.conn.cursor()
+        cursor.execute("SELECT id FROM drivers WHERE name = ?", (clean_name,))
+        row = cursor.fetchone()
+        if not row:
+            return json.dumps({"success": False, "error": "Driver not found."})
+
+        driver_id = row["id"]
+        cursor.execute("DELETE FROM deliveries WHERE driver_id = ?", (driver_id,))
+        cursor.execute("DELETE FROM shifts WHERE driver_id = ?", (driver_id,))
+        cursor.execute("DELETE FROM drivers WHERE id = ?", (driver_id,))
+        self.conn.commit()
+        return json.dumps({"success": True, "driver_id": driver_id})
+
     @Slot(str, str, str, result=str)
     def get_shifts(self, driver_id, start_date="", end_date=""):
+        self._sync_shift_totals(driver_id=driver_id)
         cursor = self.conn.cursor()
         query = """
            SELECT s.id, s.date, s.start_time, s.end_time, s.starting_mileage, s.ending_mileage, s.mileage, s.owed, s.mileage_rate,
-                  s.cash_tips as stored_cash_tips, s.credit_tips as stored_credit_tips,
-                  COALESCE(SUM(d.card_tip), 0) as calculated_credit_tips,
-                  COALESCE(SUM(d.cash_tip), 0) as calculated_cash_tips,
-                  COALESCE(SUM(CASE WHEN d.payment_type = 'Cash' THEN d.amount_collected ELSE 0 END), 0) as cash_collected
+                  s.cash_tips, s.credit_tips
            FROM shifts s
-           LEFT JOIN deliveries d ON s.id = d.shift_id
            WHERE s.driver_id = ?
         """
         params = [driver_id]
         if start_date and end_date:
             query += " AND s.date BETWEEN ? AND ?"
             params.extend([start_date, end_date])
-        query += " GROUP BY s.id ORDER BY s.date DESC"
+        query += " ORDER BY s.date DESC"
         cursor.execute(query, params)
         shifts = cursor.fetchall()
         result = []
         for row in shifts:
-            # Use calculated tips from deliveries if available, otherwise use stored values
-            credit_tips = (
-                row["calculated_credit_tips"]
-                if row["calculated_credit_tips"] > 0
-                else row["stored_credit_tips"]
-            )
-            cash_tips = (
-                row["calculated_cash_tips"]
-                if row["calculated_cash_tips"] > 0
-                else row["stored_cash_tips"]
-            )
-            cash_collected = row["cash_collected"] or 0
-            # Owed = (credit tips + cash tips) - cash collected
-            owed = (credit_tips + cash_tips) - cash_collected
             result.append(
                 {
                     "id": row["id"],
@@ -67,9 +105,9 @@ class DBHandler(QObject):
                     "starting_mileage": row["starting_mileage"],
                     "ending_mileage": row["ending_mileage"],
                     "mileage": row["mileage"],
-                    "cash": f"${cash_tips:.2f}",
-                    "credit": f"${credit_tips:.2f}",
-                    "owed": f"${owed:.2f}",
+                    "cash": f"${row['cash_tips']:.2f}",
+                    "credit": f"${row['credit_tips']:.2f}",
+                    "owed": f"${row['owed']:.2f}",
                     "mileage_rate": f"${row['mileage_rate']:.2f}",
                 }
             )
@@ -175,6 +213,7 @@ class DBHandler(QObject):
 
     @Slot(str, str, str, result=str)
     def get_summary(self, driver_id, start_date="", end_date=""):
+        self._sync_shift_totals(driver_id=driver_id)
         cursor = self.conn.cursor()
         query = """
            SELECT
@@ -205,7 +244,7 @@ class DBHandler(QObject):
     def get_deliveries(self, driver_id, start_date="", end_date=""):
         cursor = self.conn.cursor()
         query = """
-           SELECT id, driver_id, shift_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip
+           SELECT id, driver_id, shift_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip, mileage
            FROM deliveries WHERE driver_id = ?
         """
         params = [driver_id]
@@ -229,6 +268,7 @@ class DBHandler(QObject):
                     "amount_collected": f"${row['amount_collected']:.2f}",
                     "card_tip": f"${row['card_tip']:.2f}",
                     "cash_tip": row["cash_tip"] or 0,
+                    "mileage": row["mileage"] or 0,
                 }
             )
         return json.dumps(result)
@@ -238,7 +278,7 @@ class DBHandler(QObject):
         cursor = self.conn.cursor()
         cursor.execute(
             """
-               SELECT id, driver_id, shift_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip
+               SELECT id, driver_id, shift_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip, mileage
                FROM deliveries WHERE id = ?
            """,
             (delivery_id,),
@@ -249,8 +289,8 @@ class DBHandler(QObject):
         else:
             return json.dumps({})
 
-    def _validate_delivery_amounts(self, order_subtotal, amount_collected):
-        """Validate delivery amounts: non-negative, max 2 decimal places, and collected >= subtotal."""
+    def _validate_delivery_amounts(self, order_subtotal, amount_collected, mileage):
+        """Validate delivery amounts and mileage."""
         errors = []
 
         # Check for non-negative values
@@ -262,6 +302,8 @@ class DBHandler(QObject):
         # Check that amount collected is not less than subtotal
         if amount_collected < order_subtotal:
             errors.append("Amount collected cannot be less than order subtotal.")
+        if mileage < 0:
+            errors.append("Mileage cannot be negative.")
 
         # Check for maximum 2 decimal places
         def has_more_than_2_decimals(value):
@@ -275,10 +317,12 @@ class DBHandler(QObject):
             errors.append("Order subtotal cannot have more than 2 decimal places.")
         if has_more_than_2_decimals(amount_collected):
             errors.append("Amount collected cannot have more than 2 decimal places.")
+        if has_more_than_2_decimals(mileage):
+            errors.append("Mileage cannot have more than 2 decimal places.")
 
         return errors
 
-    @Slot(str, str, str, str, str, float, float, float, float, result=str)
+    @Slot(str, str, str, str, str, float, float, float, float, float, result=str)
     def add_delivery(
         self,
         driver_id,
@@ -290,17 +334,18 @@ class DBHandler(QObject):
         amount_collected,
         card_tip,
         cash_tip=0,
+        mileage=0,
     ):
         # Validate inputs
-        errors = self._validate_delivery_amounts(order_subtotal, amount_collected)
+        errors = self._validate_delivery_amounts(order_subtotal, amount_collected, mileage)
         if errors:
             return json.dumps({"success": False, "errors": errors})
 
         cursor = self.conn.cursor()
         cursor.execute(
             """
-               INSERT INTO deliveries (driver_id, shift_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+               INSERT INTO deliveries (driver_id, shift_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip, mileage)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            """,
             (
                 driver_id,
@@ -312,6 +357,7 @@ class DBHandler(QObject):
                 amount_collected,
                 card_tip,
                 cash_tip,
+                mileage,
             ),
         )
         self.conn.commit()
@@ -322,7 +368,7 @@ class DBHandler(QObject):
 
         return json.dumps({"success": True})
 
-    @Slot(str, str, str, str, str, float, float, float, float, result=str)
+    @Slot(str, str, str, str, str, float, float, float, float, float, result=str)
     def update_delivery(
         self,
         delivery_id,
@@ -334,9 +380,10 @@ class DBHandler(QObject):
         amount_collected,
         card_tip,
         cash_tip=0,
+        mileage=0,
     ):
         # Validate inputs
-        errors = self._validate_delivery_amounts(order_subtotal, amount_collected)
+        errors = self._validate_delivery_amounts(order_subtotal, amount_collected, mileage)
         if errors:
             return json.dumps({"success": False, "errors": errors})
 
@@ -348,7 +395,7 @@ class DBHandler(QObject):
 
         cursor.execute(
             """
-               UPDATE deliveries SET shift_id = ?, date = ?, order_num = ?, payment_type = ?, order_subtotal = ?, amount_collected = ?, card_tip = ?, cash_tip = ?
+               UPDATE deliveries SET shift_id = ?, date = ?, order_num = ?, payment_type = ?, order_subtotal = ?, amount_collected = ?, card_tip = ?, cash_tip = ?, mileage = ?
                WHERE id = ?
            """,
             (
@@ -360,6 +407,7 @@ class DBHandler(QObject):
                 amount_collected,
                 card_tip,
                 cash_tip,
+                mileage,
                 delivery_id,
             ),
         )
@@ -389,23 +437,48 @@ class DBHandler(QObject):
             self._update_shift_tip_totals(shift_id)
 
     def _update_shift_tip_totals(self, shift_id):
-        """Calculate and update tip totals for a shift based on associated deliveries."""
-        cursor = self.conn.cursor()
-        cursor.execute(
-            """
-               SELECT SUM(card_tip) as total_credit_tips, SUM(cash_tip) as total_cash_tips
-               FROM deliveries WHERE shift_id = ?
-            """,
-            (shift_id,),
-        )
-        row = cursor.fetchone()
-        credit_tips = row["total_credit_tips"] or 0
-        cash_tips = row["total_cash_tips"] or 0
+        """Synchronize tip totals and owed on a shift from its deliveries."""
+        self._sync_shift_totals(shift_id=shift_id)
 
-        cursor.execute(
-            "UPDATE shifts SET credit_tips = ?, cash_tips = ? WHERE id = ?",
-            (credit_tips, cash_tips, shift_id),
-        )
+    def _sync_shift_totals(self, driver_id=None, shift_id=None):
+        """Keep shift cash/credit/owed directly linked to delivery records."""
+        cursor = self.conn.cursor()
+        query = """
+            UPDATE shifts
+            SET
+                credit_tips = COALESCE(
+                    (SELECT SUM(card_tip) FROM deliveries WHERE shift_id = shifts.id), 0
+                ),
+                cash_tips = COALESCE(
+                    (SELECT SUM(cash_tip) FROM deliveries WHERE shift_id = shifts.id), 0
+                ),
+                mileage = COALESCE(
+                    (SELECT SUM(mileage) FROM deliveries WHERE shift_id = shifts.id), 0
+                ),
+                owed = COALESCE(
+                    (SELECT SUM(card_tip) FROM deliveries WHERE shift_id = shifts.id), 0
+                ) + COALESCE(
+                    (SELECT SUM(cash_tip) FROM deliveries WHERE shift_id = shifts.id), 0
+                ) - COALESCE(
+                    (
+                        SELECT SUM(
+                            CASE WHEN payment_type = 'Cash' THEN amount_collected ELSE 0 END
+                        )
+                        FROM deliveries
+                        WHERE shift_id = shifts.id
+                    ),
+                    0
+                )
+        """
+        params = []
+        if shift_id is not None:
+            query += " WHERE id = ?"
+            params.append(shift_id)
+        elif driver_id is not None:
+            query += " WHERE driver_id = ?"
+            params.append(driver_id)
+
+        cursor.execute(query, params)
         self.conn.commit()
 
     @Slot(str, str, str, result=str)

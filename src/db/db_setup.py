@@ -46,10 +46,17 @@ def create_database():
             amount_collected REAL NOT NULL,
             card_tip REAL NOT NULL,
             cash_tip REAL DEFAULT 0.0,
+            mileage REAL DEFAULT 0.0,
             FOREIGN KEY (driver_id) REFERENCES drivers (id),
             FOREIGN KEY (shift_id) REFERENCES shifts (id)
         )
     """)
+
+    # Migration support for existing databases without mileage on deliveries.
+    cursor.execute("PRAGMA table_info(deliveries)")
+    delivery_columns = [row[1] for row in cursor.fetchall()]
+    if "mileage" not in delivery_columns:
+        cursor.execute("ALTER TABLE deliveries ADD COLUMN mileage REAL DEFAULT 0.0")
 
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS settings (
@@ -81,25 +88,26 @@ def create_database():
 
     # Sample deliveries linked to shifts (tips will calculate into shift totals)
     cursor.execute("""
-        INSERT OR IGNORE INTO deliveries (driver_id, shift_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip)
-        VALUES (1, 1, '2026-01-05', '#1001', 'Credit', 25.00, 30.00, 5.00, 0)
+        INSERT OR IGNORE INTO deliveries (driver_id, shift_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip, mileage)
+        VALUES (1, 1, '2026-01-05', '#1001', 'Credit', 25.00, 30.00, 5.00, 0, 22.0)
     """)
     cursor.execute("""
-        INSERT OR IGNORE INTO deliveries (driver_id, shift_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip)
-        VALUES (1, 1, '2026-01-05', '#1002', 'Cash', 40.00, 50.00, 0, 10.00)
+        INSERT OR IGNORE INTO deliveries (driver_id, shift_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip, mileage)
+        VALUES (1, 1, '2026-01-05', '#1002', 'Cash', 40.00, 50.00, 0, 10.00, 23.0)
     """)
     cursor.execute("""
-        INSERT OR IGNORE INTO deliveries (driver_id, shift_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip)
-        VALUES (1, 2, '2026-01-06', '#1003', 'Debit', 30.00, 38.00, 8.00, 0)
+        INSERT OR IGNORE INTO deliveries (driver_id, shift_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip, mileage)
+        VALUES (1, 2, '2026-01-06', '#1003', 'Debit', 30.00, 38.00, 8.00, 0, 31.0)
     """)
     cursor.execute("""
-        INSERT OR IGNORE INTO deliveries (driver_id, shift_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip)
-        VALUES (1, 2, '2026-01-06', '#1004', 'Credit', 20.00, 25.00, 5.00, 0)
+        INSERT OR IGNORE INTO deliveries (driver_id, shift_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip, mileage)
+        VALUES (1, 2, '2026-01-06', '#1004', 'Credit', 20.00, 25.00, 5.00, 0, 29.0)
     """)
 
     # Update shift tip totals and owed from deliveries
     cursor.execute("""
         UPDATE shifts SET
+            mileage = (SELECT COALESCE(SUM(mileage), 0) FROM deliveries WHERE shift_id = shifts.id),
             credit_tips = (SELECT COALESCE(SUM(card_tip), 0) FROM deliveries WHERE shift_id = shifts.id),
             cash_tips = (SELECT COALESCE(SUM(cash_tip), 0) FROM deliveries WHERE shift_id = shifts.id),
             owed = (SELECT COALESCE(SUM(card_tip), 0) FROM deliveries WHERE shift_id = shifts.id) +

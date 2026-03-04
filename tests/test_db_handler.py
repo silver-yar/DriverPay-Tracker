@@ -49,6 +49,7 @@ def setup_database(conn):
             amount_collected REAL NOT NULL,
             card_tip REAL NOT NULL,
             cash_tip REAL DEFAULT 0.0,
+            mileage REAL DEFAULT 0.0,
             FOREIGN KEY (driver_id) REFERENCES drivers (id),
             FOREIGN KEY (shift_id) REFERENCES shifts (id)
         )
@@ -71,13 +72,13 @@ def setup_database(conn):
     )
     # Sample delivery data
     cursor.execute(
-        "INSERT INTO deliveries (driver_id, shift_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip) VALUES (1, 1, '2023-01-01', '#1001', 'Credit', 25.00, 30.00, 5.00, 2.00)"
+        "INSERT INTO deliveries (driver_id, shift_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip, mileage) VALUES (1, 1, '2023-01-01', '#1001', 'Credit', 25.00, 30.00, 5.00, 2.00, 8.00)"
     )
     cursor.execute(
-        "INSERT INTO deliveries (driver_id, shift_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip) VALUES (1, 2, '2023-01-02', '#1002', 'Cash', 40.00, 45.00, 5.00, 0.00)"
+        "INSERT INTO deliveries (driver_id, shift_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip, mileage) VALUES (1, 2, '2023-01-02', '#1002', 'Cash', 40.00, 45.00, 5.00, 0.00, 12.00)"
     )
     cursor.execute(
-        "INSERT INTO deliveries (driver_id, shift_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip) VALUES (2, NULL, '2023-01-01', '#2001', 'Debit', 18.50, 22.00, 3.50, 1.50)"
+        "INSERT INTO deliveries (driver_id, shift_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip, mileage) VALUES (2, NULL, '2023-01-01', '#2001', 'Debit', 18.50, 22.00, 3.50, 1.50, 3.50)"
     )
     conn.commit()
 
@@ -89,6 +90,51 @@ def test_get_drivers(db_handler):
     drivers_list = json.loads(drivers)
     assert len(drivers_list) == 2
     assert drivers_list[0]["name"] == "John Smith"
+
+
+def test_add_driver(db_handler):
+    import json
+
+    result = db_handler.add_driver("Taylor Green")
+    result_dict = json.loads(result)
+    assert result_dict["success"] == True
+
+    drivers = json.loads(db_handler.get_drivers())
+    assert any(d["name"] == "Taylor Green" for d in drivers)
+
+
+def test_add_driver_duplicate_and_empty_name(db_handler):
+    import json
+
+    duplicate = json.loads(db_handler.add_driver("John Smith"))
+    assert duplicate["success"] == False
+
+    empty = json.loads(db_handler.add_driver("   "))
+    assert empty["success"] == False
+
+
+def test_delete_driver(db_handler):
+    import json
+
+    # Driver 2 has one delivery and no shifts in seed data.
+    result = json.loads(db_handler.delete_driver("Sarah Davis"))
+    assert result["success"] == True
+
+    drivers = json.loads(db_handler.get_drivers())
+    assert all(d["name"] != "Sarah Davis" for d in drivers)
+
+    deliveries = json.loads(db_handler.get_deliveries(2))
+    assert len(deliveries) == 0
+
+
+def test_delete_driver_not_found_and_empty_name(db_handler):
+    import json
+
+    not_found = json.loads(db_handler.delete_driver("Missing Driver"))
+    assert not_found["success"] == False
+
+    empty = json.loads(db_handler.delete_driver(""))
+    assert empty["success"] == False
 
 
 def test_get_shifts(db_handler):
@@ -117,11 +163,27 @@ def test_get_summary(db_handler):
     import json
 
     summary_dict = json.loads(summary)
-    assert summary_dict["total_mileage"] == 220.0
-    assert summary_dict["total_cash"] == 110.0
-    assert summary_dict["total_credit"] == 90.0
-    assert summary_dict["total_owed"] == 25.0
+    assert summary_dict["total_mileage"] == 20.0
+    assert summary_dict["total_cash"] == 2.0
+    assert summary_dict["total_credit"] == 10.0
+    assert summary_dict["total_owed"] == -33.0
     assert summary_dict["avg_mileage_rate"] == 15.5
+
+
+def test_shift_totals_sync_from_deliveries(db_handler):
+    import json
+
+    # Add delivery linked to shift 1 and verify shift totals come from deliveries.
+    db_handler.add_delivery(
+        1, 1, "2023-01-03", "#1009", "Credit", 20.0, 25.0, 5.0, 1.0, 3.0
+    )
+    shifts = json.loads(db_handler.get_shifts(1))
+    shift_1 = next(s for s in shifts if s["id"] == 1)
+
+    # Shift 1 seeded deliveries: card 5.00 + cash 2.00, then + (5.00, 1.00)
+    assert shift_1["credit"] == "$10.00"
+    assert shift_1["cash"] == "$3.00"
+    assert shift_1["mileage"] == 11.0
 
 
 def test_get_shift(db_handler):
@@ -179,11 +241,12 @@ def test_get_delivery(db_handler):
     assert delivery_dict["order_subtotal"] == 25.00
     assert delivery_dict["amount_collected"] == 30.00
     assert delivery_dict["card_tip"] == 5.00
+    assert delivery_dict["mileage"] == 8.00
 
 
 def test_add_delivery(db_handler):
     db_handler.add_delivery(
-        1, None, "2023-01-03", "#1003", "Debit", 32.00, 38.00, 6.00, 0
+        1, None, "2023-01-03", "#1003", "Debit", 32.00, 38.00, 6.00, 0, 4.0
     )
     deliveries = db_handler.get_deliveries(1)
     import json
@@ -194,7 +257,7 @@ def test_add_delivery(db_handler):
 
 def test_update_delivery(db_handler):
     db_handler.update_delivery(
-        1, 1, "2023-01-01", "#1001-UPDATED", "Cash", 26.00, 31.00, 5.00, 0
+        1, 1, "2023-01-01", "#1001-UPDATED", "Cash", 26.00, 31.00, 5.00, 0, 9.0
     )
     delivery = db_handler.get_delivery(1)
     import json
@@ -204,6 +267,7 @@ def test_update_delivery(db_handler):
     assert delivery_dict["payment_type"] == "Cash"
     assert delivery_dict["order_subtotal"] == 26.00
     assert delivery_dict["amount_collected"] == 31.00
+    assert delivery_dict["mileage"] == 9.0
 
 
 def test_delete_delivery(db_handler):
@@ -230,7 +294,7 @@ def test_add_delivery_negative_subtotal(db_handler):
     import json
 
     result = db_handler.add_delivery(
-        1, None, "2023-01-03", "#1003", "Cash", -10.00, 15.00, 5.00, 0
+        1, None, "2023-01-03", "#1003", "Cash", -10.00, 15.00, 5.00, 0, 1.0
     )
     result_dict = json.loads(result)
     assert result_dict["success"] == False
@@ -241,7 +305,7 @@ def test_add_delivery_negative_collected(db_handler):
     import json
 
     result = db_handler.add_delivery(
-        1, None, "2023-01-03", "#1003", "Cash", 10.00, -5.00, -15.00, 0
+        1, None, "2023-01-03", "#1003", "Cash", 10.00, -5.00, -15.00, 0, 1.0
     )
     result_dict = json.loads(result)
     assert result_dict["success"] == False
@@ -252,7 +316,7 @@ def test_add_delivery_too_many_decimals(db_handler):
     import json
 
     result = db_handler.add_delivery(
-        1, None, "2023-01-03", "#1003", "Cash", 10.999, 15.00, 4.001, 0
+        1, None, "2023-01-03", "#1003", "Cash", 10.999, 15.00, 4.001, 0, 1.111
     )
     result_dict = json.loads(result)
     assert result_dict["success"] == False
@@ -263,7 +327,7 @@ def test_add_delivery_valid_values(db_handler):
     import json
 
     result = db_handler.add_delivery(
-        1, None, "2023-01-03", "#1003", "Credit", 25.50, 32.75, 7.25, 0
+        1, None, "2023-01-03", "#1003", "Credit", 25.50, 32.75, 7.25, 0, 2.25
     )
     result_dict = json.loads(result)
     assert result_dict["success"] == True
@@ -274,7 +338,7 @@ def test_add_delivery_collected_less_than_subtotal(db_handler):
 
     # Test that amount collected cannot be less than subtotal
     result = db_handler.add_delivery(
-        1, None, "2023-01-03", "#1003", "Cash", 30.00, 25.00, -5.00, 0
+        1, None, "2023-01-03", "#1003", "Cash", 30.00, 25.00, -5.00, 0, 1.0
     )
     result_dict = json.loads(result)
     assert result_dict["success"] == False
@@ -289,21 +353,21 @@ def test_update_delivery_validation(db_handler):
 
     # Test update with negative value
     result = db_handler.update_delivery(
-        1, 1, "2023-01-01", "#1001", "Cash", -5.00, 10.00, 15.00, 0
+        1, 1, "2023-01-01", "#1001", "Cash", -5.00, 10.00, 15.00, 0, 1.0
     )
     result_dict = json.loads(result)
     assert result_dict["success"] == False
 
     # Test update with too many decimals
     result = db_handler.update_delivery(
-        1, 1, "2023-01-01", "#1001", "Cash", 25.123, 30.00, 4.877, 0
+        1, 1, "2023-01-01", "#1001", "Cash", 25.123, 30.00, 4.877, 0, 1.0
     )
     result_dict = json.loads(result)
     assert result_dict["success"] == False
 
     # Test update with collected less than subtotal
     result = db_handler.update_delivery(
-        1, 1, "2023-01-01", "#1001", "Cash", 40.00, 35.00, -5.00, 0
+        1, 1, "2023-01-01", "#1001", "Cash", 40.00, 35.00, -5.00, 0, 1.0
     )
     result_dict = json.loads(result)
     assert result_dict["success"] == False
@@ -314,7 +378,7 @@ def test_update_delivery_validation(db_handler):
 
     # Test update with valid values
     result = db_handler.update_delivery(
-        1, 1, "2023-01-01", "#1001", "Debit", 26.00, 31.50, 5.50, 0
+        1, 1, "2023-01-01", "#1001", "Debit", 26.00, 31.50, 5.50, 0, 1.25
     )
     result_dict = json.loads(result)
     assert result_dict["success"] == True
