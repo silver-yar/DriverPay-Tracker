@@ -59,7 +59,6 @@ function selectDriver(driverId, element) {
     element.textContent;
   if (currentTab === "shifts") {
     loadShifts();
-    loadSummary();
   } else {
     loadDeliveries();
     loadDeliveriesSummary();
@@ -97,7 +96,6 @@ function switchTab(tab) {
     document.getElementById("shifts-tab-btn").classList.add("active");
     document.getElementById("shifts-section").classList.add("active");
     loadShifts();
-    loadSummary();
   } else {
     const checkedShifts = document.querySelectorAll(
       '#shift-table input[type="checkbox"]:checked',
@@ -162,21 +160,50 @@ function loadShifts() {
             `;
       table.appendChild(row);
     });
+    updateShiftSummaryFromSelection();
   });
 }
 
-function loadSummary() {
-  if (!currentDriverId) return;
-  db.get_summary(currentDriverId, startDate, endDate).then((summaryJson) => {
-    const summary = JSON.parse(summaryJson);
-    const cards = document.getElementById("summary-cards");
-    cards.innerHTML = `
+function renderShiftSummaryCards(summary) {
+  const cards = document.getElementById("summary-cards");
+  cards.innerHTML = `
             <div class="card green">Total Mileage<br><strong>${summary.total_mileage.toFixed(1)}</strong></div>
             <div class="card green">Cash Tips<br><strong>$${summary.total_cash.toFixed(2)}</strong></div>
             <div class="card green">Credit Tips<br><strong>$${summary.total_credit.toFixed(2)}</strong></div>
             <div class="card ${summary.total_owed < 0 ? "red" : "green"}">Owed<br><strong>$${summary.total_owed.toFixed(2)}</strong></div>
             <div class="card green">Avg Mileage Rate<br><strong>$${summary.avg_mileage_rate.toFixed(2)}</strong></div>
         `;
+}
+
+function updateShiftSummaryFromSelection() {
+  const checked = document.querySelectorAll(
+    '#shift-table input[type="checkbox"]:checked',
+  );
+
+  if (checked.length !== 1) {
+    renderShiftSummaryCards({
+      total_mileage: 0,
+      total_cash: 0,
+      total_credit: 0,
+      total_owed: 0,
+      avg_mileage_rate: 0,
+    });
+    return;
+  }
+
+  const row = checked[0].closest("tr");
+  const mileage = parseFloat(row.cells[4].textContent) || 0;
+  const cash = parseFloat(row.cells[5].textContent.replace("$", "")) || 0;
+  const credit = parseFloat(row.cells[6].textContent.replace("$", "")) || 0;
+  const owed = parseFloat(row.cells[7].textContent.replace("$", "")) || 0;
+  const mileageRate = parseFloat(row.cells[8].textContent.replace("$", "")) || 0;
+
+  renderShiftSummaryCards({
+    total_mileage: mileage,
+    total_cash: cash,
+    total_credit: credit,
+    total_owed: owed,
+    avg_mileage_rate: mileageRate,
   });
 }
 
@@ -288,10 +315,15 @@ document.getElementById("search-btn").addEventListener("click", () => {
   endDate = document.getElementById("end-date").value;
   if (currentTab === "shifts") {
     loadShifts();
-    loadSummary();
   } else {
     loadDeliveries();
     loadDeliveriesSummary();
+  }
+});
+
+document.getElementById("shift-table").addEventListener("change", (e) => {
+  if (e.target && e.target.matches('input[type="checkbox"]')) {
+    updateShiftSummaryFromSelection();
   }
 });
 
@@ -472,7 +504,6 @@ document.getElementById("add-shift-form").addEventListener("submit", (e) => {
   }
   closeShiftModal();
   loadShifts();
-  loadSummary();
 });
 
 document.getElementById("cancel-add").addEventListener("click", () => {
@@ -494,7 +525,6 @@ document.getElementById("delete-shift-btn").addEventListener("click", () => {
       db.delete_shift(cb.dataset.id);
     });
     loadShifts();
-    loadSummary();
   }
 });
 
