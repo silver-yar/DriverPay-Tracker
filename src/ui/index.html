@@ -350,7 +350,13 @@
                         <label for="driver-name-input" id="driver-name-label"
                             >Driver Name:</label
                         ><br /><br />
-                        <input type="text" id="driver-name-input" required />
+                        <input
+                            type="text"
+                            id="driver-name-input"
+                            required
+                            pattern="[A-Za-z ]+"
+                            title="Only alphabetic characters and spaces are allowed."
+                        />
                         <br /><br />
                         <button type="submit" id="driver-submit-btn">
                             Add Driver

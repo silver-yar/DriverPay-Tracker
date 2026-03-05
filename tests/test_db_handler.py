@@ -112,6 +112,9 @@ def test_add_driver_duplicate_and_empty_name(db_handler):
     empty = json.loads(db_handler.add_driver("   "))
     assert empty["success"] == False
 
+    invalid = json.loads(db_handler.add_driver("John123"))
+    assert invalid["success"] == False
+
 
 def test_delete_driver(db_handler):
     import json
@@ -180,7 +183,7 @@ def test_shift_totals_sync_from_deliveries(db_handler):
     shifts = json.loads(db_handler.get_shifts(1))
     shift_1 = next(s for s in shifts if s["id"] == 1)
 
-    # Shift 1 seeded deliveries: card 5.00 + cash 2.00, then + (5.00, 1.00)
+    # Shift 1 seeded deliveries: card 5.00 + cash tip 2.00, then + (5.00, 1.00)
     assert shift_1["credit"] == "$10.00"
     assert shift_1["cash"] == "$3.00"
     assert shift_1["mileage"] == 11.0

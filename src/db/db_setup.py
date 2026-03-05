@@ -71,43 +71,56 @@ def create_database():
         VALUES (1, 0.65)
     """)
 
-    # Sample data
+    # Sample drivers
     cursor.execute("INSERT OR IGNORE INTO drivers (name) VALUES ('John Smith')")
     cursor.execute("INSERT OR IGNORE INTO drivers (name) VALUES ('Sarah Davis')")
     cursor.execute("INSERT OR IGNORE INTO drivers (name) VALUES ('Mike Johnson')")
 
-    # Sample shifts (tips will be calculated from deliveries)
+    # Sample shifts. Values for mileage/cash/credit/owed are derived from deliveries below.
     cursor.execute("""
         INSERT OR IGNORE INTO shifts (driver_id, date, start_time, end_time, starting_mileage, ending_mileage, mileage, cash_tips, credit_tips, owed, mileage_rate)
-        VALUES (1, '2026-01-05', '10:00', '16:00', 10000, 10045, 45.0, 0, 0, 15.00, 0.65)
+        VALUES (1, '2026-01-05', '10:00', '16:00', 0, 0, 0, 0, 0, 0, 0.65)
     """)
     cursor.execute("""
         INSERT OR IGNORE INTO shifts (driver_id, date, start_time, end_time, starting_mileage, ending_mileage, mileage, cash_tips, credit_tips, owed, mileage_rate)
-        VALUES (1, '2026-01-06', '11:30', '17:30', 10045, 10105, 60.0, 0, 0, 20.00, 0.65)
+        VALUES (1, '2026-01-06', '11:30', '17:30', 0, 0, 0, 0, 0, 0, 0.65)
+    """)
+    cursor.execute("""
+        INSERT OR IGNORE INTO shifts (driver_id, date, start_time, end_time, starting_mileage, ending_mileage, mileage, cash_tips, credit_tips, owed, mileage_rate)
+        VALUES (2, '2026-01-05', '12:00', '18:00', 0, 0, 0, 0, 0, 0, 0.65)
     """)
 
-    # Sample deliveries linked to shifts (tips will calculate into shift totals)
+    # Sample deliveries linked to shifts.
+    # Shift totals are calculated from this delivery data.
     cursor.execute("""
         INSERT OR IGNORE INTO deliveries (driver_id, shift_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip, mileage)
-        VALUES (1, 1, '2026-01-05', '#1001', 'Credit', 25.00, 30.00, 5.00, 0, 22.0)
+        VALUES (1, 1, '2026-01-05', '#1001', 'Credit', 25.00, 30.00, 5.00, 0, 4.2)
     """)
     cursor.execute("""
         INSERT OR IGNORE INTO deliveries (driver_id, shift_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip, mileage)
-        VALUES (1, 1, '2026-01-05', '#1002', 'Cash', 40.00, 50.00, 0, 10.00, 23.0)
+        VALUES (1, 1, '2026-01-05', '#1002', 'Cash', 40.00, 50.00, 0, 10.00, 5.3)
     """)
     cursor.execute("""
         INSERT OR IGNORE INTO deliveries (driver_id, shift_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip, mileage)
-        VALUES (1, 2, '2026-01-06', '#1003', 'Debit', 30.00, 38.00, 8.00, 0, 31.0)
+        VALUES (1, 2, '2026-01-06', '#1003', 'Debit', 30.00, 38.00, 8.00, 0, 3.8)
     """)
     cursor.execute("""
         INSERT OR IGNORE INTO deliveries (driver_id, shift_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip, mileage)
-        VALUES (1, 2, '2026-01-06', '#1004', 'Credit', 20.00, 25.00, 5.00, 0, 29.0)
+        VALUES (1, 2, '2026-01-06', '#1004', 'Credit', 20.00, 25.00, 5.00, 0, 2.9)
+    """)
+    cursor.execute("""
+        INSERT OR IGNORE INTO deliveries (driver_id, shift_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip, mileage)
+        VALUES (2, 3, '2026-01-05', '#2001', 'Cash', 28.00, 35.00, 0, 7.00, 4.1)
+    """)
+    cursor.execute("""
+        INSERT OR IGNORE INTO deliveries (driver_id, shift_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip, mileage)
+        VALUES (2, 3, '2026-01-05', '#2002', 'Credit', 22.00, 27.00, 5.00, 0, 3.6)
     """)
 
-    # Update shift tip totals and owed from deliveries
+    # Sync shift totals from deliveries (single source of truth).
     cursor.execute("""
         UPDATE shifts SET
-            mileage = (SELECT COALESCE(SUM(mileage), 0) FROM deliveries WHERE shift_id = shifts.id),
+            mileage = ROUND((SELECT COALESCE(SUM(mileage), 0) FROM deliveries WHERE shift_id = shifts.id), 2),
             credit_tips = (SELECT COALESCE(SUM(card_tip), 0) FROM deliveries WHERE shift_id = shifts.id),
             cash_tips = (SELECT COALESCE(SUM(cash_tip), 0) FROM deliveries WHERE shift_id = shifts.id),
             owed = (SELECT COALESCE(SUM(card_tip), 0) FROM deliveries WHERE shift_id = shifts.id) +
