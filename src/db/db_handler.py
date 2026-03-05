@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import sqlite3
 
 from PySide6.QtCore import QObject, Slot
@@ -44,6 +45,13 @@ class DBHandler(QObject):
         if not clean_name:
             return json.dumps(
                 {"success": False, "error": "Driver name cannot be empty."}
+            )
+        if not re.fullmatch(r"[A-Za-z ]+", clean_name):
+            return json.dumps(
+                {
+                    "success": False,
+                    "error": "Driver name can only contain alphabetic characters and spaces.",
+                }
             )
 
         cursor = self.conn.cursor()
@@ -452,8 +460,11 @@ class DBHandler(QObject):
                 cash_tips = COALESCE(
                     (SELECT SUM(cash_tip) FROM deliveries WHERE shift_id = shifts.id), 0
                 ),
-                mileage = COALESCE(
-                    (SELECT SUM(mileage) FROM deliveries WHERE shift_id = shifts.id), 0
+                mileage = ROUND(
+                    COALESCE(
+                        (SELECT SUM(mileage) FROM deliveries WHERE shift_id = shifts.id), 0
+                    ),
+                    2
                 ),
                 owed = COALESCE(
                     (SELECT SUM(card_tip) FROM deliveries WHERE shift_id = shifts.id), 0
