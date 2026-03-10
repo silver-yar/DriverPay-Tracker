@@ -418,6 +418,12 @@ document.getElementById("settings-btn").addEventListener("click", () => {
     const settings = JSON.parse(settingsJson);
     document.getElementById("settings-mileage-rate").value =
       settings.default_mileage_rate;
+    document.getElementById("settings-in-store-hourly-rate").value = parseFloat(
+      settings.default_in_store_hourly_rate,
+    ).toFixed(2);
+    document.getElementById("settings-on-road-hourly-rate").value = parseFloat(
+      settings.default_on_road_hourly_rate,
+    ).toFixed(2);
     document.getElementById("settings-modal").style.display = "block";
   });
 });
@@ -431,7 +437,20 @@ document.getElementById("settings-form").addEventListener("submit", (e) => {
   const mileageRate = parseFloat(
     document.getElementById("settings-mileage-rate").value,
   );
-  db.update_settings(mileageRate);
+  const inStoreHourlyRate = parseFloat(
+    document.getElementById("settings-in-store-hourly-rate").value,
+  );
+  const onRoadHourlyRate = parseFloat(
+    document.getElementById("settings-on-road-hourly-rate").value,
+  );
+
+  // Validate positive values
+  if (mileageRate <= 0 || inStoreHourlyRate <= 0 || onRoadHourlyRate <= 0) {
+    alert("All rates must be positive values.");
+    return;
+  }
+
+  db.update_settings(mileageRate, inStoreHourlyRate, onRoadHourlyRate);
   document.getElementById("settings-modal").style.display = "none";
 });
 
@@ -447,11 +466,15 @@ document.getElementById("add-shift-btn").addEventListener("click", () => {
   document.getElementById("shift-id").value = "";
   document.getElementById("add-shift-form").reset();
 
-  // Load default mileage rate from settings
+  // Load default rates from settings
   db.get_settings().then((settingsJson) => {
     const settings = JSON.parse(settingsJson);
     document.getElementById("shift-mileage-rate").value =
       settings.default_mileage_rate;
+    document.getElementById("shift-in-store-hours").value =
+      settings.default_in_store_hourly_rate || 0;
+    document.getElementById("shift-on-road-hours").value =
+      settings.default_on_road_hourly_rate || 0;
   });
 
   document.getElementById("add-shift-modal").style.display = "block";

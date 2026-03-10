@@ -574,18 +574,41 @@ class DBHandler(QObject):
     def get_settings(self):
         """Get application settings."""
         cursor = self.conn.cursor()
-        cursor.execute("SELECT default_mileage_rate FROM settings WHERE id = 1")
+        cursor.execute(
+            "SELECT default_mileage_rate, default_in_store_hourly_rate, default_on_road_hourly_rate FROM settings WHERE id = 1"
+        )
         row = cursor.fetchone()
         if row:
-            return json.dumps({"default_mileage_rate": row["default_mileage_rate"]})
-        return json.dumps({"default_mileage_rate": 0.65})
+            return json.dumps(
+                {
+                    "default_mileage_rate": row["default_mileage_rate"],
+                    "default_in_store_hourly_rate": row["default_in_store_hourly_rate"],
+                    "default_on_road_hourly_rate": row["default_on_road_hourly_rate"],
+                }
+            )
+        return json.dumps(
+            {
+                "default_mileage_rate": 0.65,
+                "default_in_store_hourly_rate": 15.00,
+                "default_on_road_hourly_rate": 20.00,
+            }
+        )
 
-    @Slot(float)
-    def update_settings(self, default_mileage_rate):
+    @Slot(float, float, float)
+    def update_settings(
+        self,
+        default_mileage_rate,
+        default_in_store_hourly_rate,
+        default_on_road_hourly_rate,
+    ):
         """Update application settings."""
         cursor = self.conn.cursor()
         cursor.execute(
-            "UPDATE settings SET default_mileage_rate = ? WHERE id = 1",
-            (default_mileage_rate,),
+            "UPDATE settings SET default_mileage_rate = ?, default_in_store_hourly_rate = ?, default_on_road_hourly_rate = ? WHERE id = 1",
+            (
+                default_mileage_rate,
+                default_in_store_hourly_rate,
+                default_on_road_hourly_rate,
+            ),
         )
         self.conn.commit()
