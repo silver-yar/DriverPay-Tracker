@@ -43,7 +43,7 @@ def setup_database(conn):
             driver_id INTEGER NOT NULL,
             shift_id INTEGER,
             date TEXT NOT NULL,
-            order_num TEXT,
+            order_num INTEGER,
             payment_type TEXT NOT NULL,
             order_subtotal REAL NOT NULL,
             amount_collected REAL NOT NULL,
@@ -72,13 +72,13 @@ def setup_database(conn):
     )
     # Sample delivery data
     cursor.execute(
-        "INSERT INTO deliveries (driver_id, shift_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip, mileage) VALUES (1, 1, '2023-01-01', '#1001', 'Credit', 25.00, 30.00, 5.00, 2.00, 8.00)"
+        "INSERT INTO deliveries (driver_id, shift_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip, mileage) VALUES (1, 1, '2023-01-01', 1001, 'Credit', 25.00, 30.00, 5.00, 2.00, 8.00)"
     )
     cursor.execute(
-        "INSERT INTO deliveries (driver_id, shift_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip, mileage) VALUES (1, 2, '2023-01-02', '#1002', 'Cash', 40.00, 45.00, 5.00, 0.00, 12.00)"
+        "INSERT INTO deliveries (driver_id, shift_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip, mileage) VALUES (1, 2, '2023-01-02', 1002, 'Cash', 40.00, 45.00, 5.00, 0.00, 12.00)"
     )
     cursor.execute(
-        "INSERT INTO deliveries (driver_id, shift_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip, mileage) VALUES (2, NULL, '2023-01-01', '#2001', 'Debit', 18.50, 22.00, 3.50, 1.50, 3.50)"
+        "INSERT INTO deliveries (driver_id, shift_id, date, order_num, payment_type, order_subtotal, amount_collected, card_tip, cash_tip, mileage) VALUES (2, NULL, '2023-01-01', 2001, 'Debit', 18.50, 22.00, 3.50, 1.50, 3.50)"
     )
     conn.commit()
 

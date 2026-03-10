@@ -242,7 +242,7 @@ function loadDeliveries() {
         row.innerHTML = `
                 <td><input type="checkbox" data-id="${delivery.id}"></td>
                 <td>${delivery.date}</td>
-                <td>${delivery.order_num || "-"}</td>
+                <td>${delivery.order_num > 0 ? delivery.order_num : "-"}</td>
                 <td>${delivery.payment_type}</td>
                 <td>${delivery.order_subtotal}</td>
                 <td>${delivery.amount_collected}</td>
@@ -888,7 +888,10 @@ document.getElementById("add-delivery-form").addEventListener("submit", (e) => {
 
   const date =
     currentDeliveryDate || document.getElementById("delivery-date").value;
-  const orderNum = document.getElementById("delivery-order-num").value;
+  const orderNum = parseInt(
+    document.getElementById("delivery-order-num").value,
+    10,
+  );
   const shiftId =
     deliveryModalMode === "edit"
       ? currentDeliveryShiftId
@@ -1016,7 +1019,9 @@ document.getElementById("edit-delivery-btn").addEventListener("click", () => {
     document.getElementById("delivery-date").value = delivery.date;
     currentDeliveryDate = delivery.date;
     document.getElementById("delivery-order-num").value =
-      delivery.order_num || "";
+      delivery.order_num !== undefined && delivery.order_num !== null
+        ? delivery.order_num
+        : "";
     setSelectedPaymentType(delivery.payment_type);
     document.getElementById("delivery-subtotal").value =
       delivery.order_subtotal;

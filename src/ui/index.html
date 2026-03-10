@@ -150,8 +150,16 @@
                             >End Time:
                             <input type="time" id="shift-end" required /></label
                         ><br /><br />
-                        <input type="hidden" id="shift-starting-mileage" value="0" />
-                        <input type="hidden" id="shift-ending-mileage" value="0" />
+                        <input
+                            type="hidden"
+                            id="shift-starting-mileage"
+                            value="0"
+                        />
+                        <input
+                            type="hidden"
+                            id="shift-ending-mileage"
+                            value="0"
+                        />
                         <input type="hidden" id="shift-mileage" value="0" />
                         <input type="hidden" id="shift-cash" value="0" />
                         <input type="hidden" id="shift-credit" value="0" />
@@ -205,9 +213,9 @@
                         <label
                             >Order Number:
                             <input
-                                type="text"
+                                type="number"
                                 id="delivery-order-num"
-                                placeholder="e.g., #1234"
+                                placeholder="e.g., 1234"
                                 required /></label
                         ><br /><br />
                         <label
@@ -215,7 +223,8 @@
                             <input
                                 type="hidden"
                                 id="delivery-payment-type"
-                                value="Credit" />
+                                value="Credit"
+                            />
                             <div
                                 class="custom-dropdown"
                                 id="delivery-payment-dropdown"
@@ -256,8 +265,7 @@
                                         Cash (auto-calculated)
                                     </button>
                                 </div>
-                            </div>
-                        </label
+                            </div> </label
                         ><br /><br />
                         <label
                             >Order Subtotal:

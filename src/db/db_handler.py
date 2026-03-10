@@ -270,7 +270,9 @@ class DBHandler(QObject):
                     "driver_id": row["driver_id"],
                     "shift_id": row["shift_id"],
                     "date": row["date"],
-                    "order_num": row["order_num"] or "",
+                    "order_num": row["order_num"]
+                    if row["order_num"] is not None
+                    else 0,
                     "payment_type": row["payment_type"],
                     "order_subtotal": f"${row['order_subtotal']:.2f}",
                     "amount_collected": f"${row['amount_collected']:.2f}",
@@ -293,7 +295,11 @@ class DBHandler(QObject):
         )
         row = cursor.fetchone()
         if row:
-            return json.dumps(dict(row))
+            result = dict(row)
+            # Ensure order_num is integer or 0
+            if result.get("order_num") is None:
+                result["order_num"] = 0
+            return json.dumps(result)
         else:
             return json.dumps({})
 
