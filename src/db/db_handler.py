@@ -345,7 +345,9 @@ class DBHandler(QObject):
         mileage=0,
     ):
         # Validate inputs
-        errors = self._validate_delivery_amounts(order_subtotal, amount_collected, mileage)
+        errors = self._validate_delivery_amounts(
+            order_subtotal, amount_collected, mileage
+        )
         if errors:
             return json.dumps({"success": False, "errors": errors})
 
@@ -391,7 +393,9 @@ class DBHandler(QObject):
         mileage=0,
     ):
         # Validate inputs
-        errors = self._validate_delivery_amounts(order_subtotal, amount_collected, mileage)
+        errors = self._validate_delivery_amounts(
+            order_subtotal, amount_collected, mileage
+        )
         if errors:
             return json.dumps({"success": False, "errors": errors})
 
@@ -501,7 +505,9 @@ class DBHandler(QObject):
                SUM(amount_collected) as total_collected,
                SUM(card_tip) as total_tips,
                SUM(cash_tip) as total_cash_tips,
-               COUNT(*) as delivery_count
+               COUNT(*) as delivery_count,
+               SUM(CASE WHEN payment_type IN ('Credit', 'Debit') THEN cash_tip ELSE 0 END) +
+               SUM(CASE WHEN payment_type = 'Cash' THEN amount_collected ELSE 0 END) as total_cash_collected
            FROM deliveries WHERE driver_id = ?
         """
         params = [driver_id]
@@ -517,6 +523,7 @@ class DBHandler(QObject):
                 "total_tips": row["total_tips"] or 0,
                 "total_cash_tips": row["total_cash_tips"] or 0,
                 "delivery_count": row["delivery_count"] or 0,
+                "total_cash_collected": row["total_cash_collected"] or 0,
             }
         )
 

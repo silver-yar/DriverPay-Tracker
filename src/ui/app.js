@@ -129,6 +129,7 @@ function renderDeliverySummaryCards(summary) {
             <div class="card green">Total Mileage<br><strong>${summary.total_mileage.toFixed(2)}</strong></div>
             <div class="card green">Cash Tips<br><strong>$${summary.total_cash.toFixed(2)}</strong></div>
             <div class="card green">Credit Tips<br><strong>$${summary.total_credit.toFixed(2)}</strong></div>
+            <div class="card green">Total Cash Collected<br><strong>$${summary.total_cash_collected.toFixed(2)}</strong></div>
             <div class="card ${owedColorClass}">Owed<br><strong>$${owedDisplay.toFixed(2)}</strong></div>
         `;
 }
@@ -265,53 +266,60 @@ function loadDeliveriesSummary() {
       total_cash: 0,
       total_credit: 0,
       total_owed: 0,
+      total_cash_collected: 0,
     });
     return;
   }
 
-  db.get_deliveries(currentDriverId, startDate, endDate).then((deliveriesJson) => {
-    const deliveries = JSON.parse(deliveriesJson).filter(
-      (delivery) =>
-        String(delivery.shift_id || "") === String(selectedShiftIdForDeliveries),
-    );
+  db.get_deliveries(currentDriverId, startDate, endDate).then(
+    (deliveriesJson) => {
+      const deliveries = JSON.parse(deliveriesJson).filter(
+        (delivery) =>
+          String(delivery.shift_id || "") ===
+          String(selectedShiftIdForDeliveries),
+      );
 
-    const summary = deliveries.reduce(
-      (acc, delivery) => {
-        const subtotal = parseFloat(
-          String(delivery.order_subtotal || "$0").replace("$", ""),
-        );
-        const collected = parseFloat(
-          String(delivery.amount_collected || "$0").replace("$", ""),
-        );
-        const mileage = parseFloat(delivery.mileage || 0);
-        const cashTip = parseFloat(delivery.cash_tip || 0);
-        const creditTip = parseFloat(
-          String(delivery.card_tip || "$0").replace("$", ""),
-        );
+      const summary = deliveries.reduce(
+        (acc, delivery) => {
+          const subtotal = parseFloat(
+            String(delivery.order_subtotal || "$0").replace("$", ""),
+          );
+          const collected = parseFloat(
+            String(delivery.amount_collected || "$0").replace("$", ""),
+          );
+          const mileage = parseFloat(delivery.mileage || 0);
+          const cashTip = parseFloat(delivery.cash_tip || 0);
+          const creditTip = parseFloat(
+            String(delivery.card_tip || "$0").replace("$", ""),
+          );
 
-        acc.total_mileage += mileage;
-        acc.total_credit += creditTip;
-        acc.total_cash += cashTip;
-        acc.total_tips += creditTip + cashTip;
-        if (delivery.payment_type === "Cash") {
-          acc.total_cash_collected += collected;
-        }
-        return acc;
-      },
-      {
-        total_mileage: 0,
-        total_cash: 0,
-        total_credit: 0,
-        total_owed: 0,
-        total_tips: 0,
-        total_cash_collected: 0,
-      },
-    );
-    // Keep owed in sync with shift logic.
-    summary.total_owed = summary.total_tips - summary.total_cash_collected;
+          acc.total_mileage += mileage;
+          acc.total_credit += creditTip;
+          acc.total_cash += cashTip;
+          acc.total_tips += creditTip + cashTip;
+          if (
+            delivery.payment_type &&
+            delivery.payment_type.toLowerCase() === "cash"
+          ) {
+            acc.total_cash_collected += collected;
+          }
+          return acc;
+        },
+        {
+          total_mileage: 0,
+          total_cash: 0,
+          total_credit: 0,
+          total_owed: 0,
+          total_tips: 0,
+          total_cash_collected: 0,
+        },
+      );
+      // Keep owed in sync with shift logic.
+      summary.total_owed = summary.total_tips - summary.total_cash_collected;
 
-    renderDeliverySummaryCards(summary);
-  });
+      renderDeliverySummaryCards(summary);
+    },
+  );
 }
 
 // Search Button
@@ -878,7 +886,8 @@ document.getElementById("add-delivery-form").addEventListener("submit", (e) => {
     return;
   }
 
-  const date = currentDeliveryDate || document.getElementById("delivery-date").value;
+  const date =
+    currentDeliveryDate || document.getElementById("delivery-date").value;
   const orderNum = document.getElementById("delivery-order-num").value;
   const shiftId =
     deliveryModalMode === "edit"
@@ -904,7 +913,9 @@ document.getElementById("add-delivery-form").addEventListener("submit", (e) => {
 
   // Additional validation: ensure values are non-negative
   if (subtotal < 0 || collected < 0 || mileage < 0) {
-    alert("Subtotal, Amount Collected, and Mileage must be non-negative values.");
+    alert(
+      "Subtotal, Amount Collected, and Mileage must be non-negative values.",
+    );
     return;
   }
   if (Number.isNaN(mileage)) {
