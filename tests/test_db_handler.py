@@ -27,6 +27,8 @@ def setup_database(conn):
             date TEXT NOT NULL,
             start_time TEXT NOT NULL,
             end_time TEXT NOT NULL,
+            in_store_hours REAL NOT NULL DEFAULT 0,
+            on_road_hours REAL NOT NULL DEFAULT 0,
             starting_mileage REAL NOT NULL,
             ending_mileage REAL NOT NULL,
             mileage REAL NOT NULL,

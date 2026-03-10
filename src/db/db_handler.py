@@ -90,7 +90,7 @@ class DBHandler(QObject):
         self._sync_shift_totals(driver_id=driver_id)
         cursor = self.conn.cursor()
         query = """
-           SELECT s.id, s.date, s.start_time, s.end_time, s.starting_mileage, s.ending_mileage, s.mileage, s.owed, s.mileage_rate,
+           SELECT s.id, s.date, s.start_time, s.end_time, s.in_store_hours, s.on_road_hours, s.starting_mileage, s.ending_mileage, s.mileage, s.owed, s.mileage_rate,
                   s.cash_tips, s.credit_tips
            FROM shifts s
            WHERE s.driver_id = ?
@@ -110,6 +110,8 @@ class DBHandler(QObject):
                     "date": row["date"],
                     "start": row["start_time"],
                     "end": row["end_time"],
+                    "in_store_hours": row["in_store_hours"] or 0,
+                    "on_road_hours": row["on_road_hours"] or 0,
                     "starting_mileage": row["starting_mileage"],
                     "ending_mileage": row["ending_mileage"],
                     "mileage": row["mileage"],
@@ -126,7 +128,7 @@ class DBHandler(QObject):
         cursor = self.conn.cursor()
         cursor.execute(
             """
-               SELECT id, driver_id, date, start_time, end_time, starting_mileage, ending_mileage, mileage, cash_tips, credit_tips, owed, mileage_rate
+               SELECT id, driver_id, date, start_time, end_time, in_store_hours, on_road_hours, starting_mileage, ending_mileage, mileage, cash_tips, credit_tips, owed, mileage_rate
                FROM shifts WHERE id = ?
            """,
             (shift_id,),
@@ -137,13 +139,15 @@ class DBHandler(QObject):
         else:
             return json.dumps({})
 
-    @Slot(str, str, str, str, float, float, float, float, float, float)
+    @Slot(str, str, str, str, float, float, float, float, float, float, float, float)
     def add_shift(
         self,
         driver_id,
         date,
         start_time,
         end_time,
+        in_store_hours,
+        on_road_hours,
         starting_mileage,
         ending_mileage,
         cash_tips,
@@ -156,14 +160,16 @@ class DBHandler(QObject):
         cursor = self.conn.cursor()
         cursor.execute(
             """
-               INSERT INTO shifts (driver_id, date, start_time, end_time, starting_mileage, ending_mileage, mileage, cash_tips, credit_tips, owed, mileage_rate)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               INSERT INTO shifts (driver_id, date, start_time, end_time, in_store_hours, on_road_hours, starting_mileage, ending_mileage, mileage, cash_tips, credit_tips, owed, mileage_rate)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            """,
             (
                 driver_id,
                 date,
                 start_time,
                 end_time,
+                in_store_hours,
+                on_road_hours,
                 starting_mileage,
                 ending_mileage,
                 mileage,
@@ -175,13 +181,15 @@ class DBHandler(QObject):
         )
         self.conn.commit()
 
-    @Slot(str, str, str, str, float, float, float, float, float, float)
+    @Slot(str, str, str, str, float, float, float, float, float, float, float, float)
     def update_shift(
         self,
         shift_id,
         date,
         start_time,
         end_time,
+        in_store_hours,
+        on_road_hours,
         starting_mileage,
         ending_mileage,
         cash_tips,
@@ -194,13 +202,15 @@ class DBHandler(QObject):
         cursor = self.conn.cursor()
         cursor.execute(
             """
-               UPDATE shifts SET date = ?, start_time = ?, end_time = ?, starting_mileage = ?, ending_mileage = ?, mileage = ?, cash_tips = ?, credit_tips = ?, owed = ?, mileage_rate = ?
+               UPDATE shifts SET date = ?, start_time = ?, end_time = ?, in_store_hours = ?, on_road_hours = ?, starting_mileage = ?, ending_mileage = ?, mileage = ?, cash_tips = ?, credit_tips = ?, owed = ?, mileage_rate = ?
                WHERE id = ?
            """,
             (
                 date,
                 start_time,
                 end_time,
+                in_store_hours,
+                on_road_hours,
                 starting_mileage,
                 ending_mileage,
                 mileage,

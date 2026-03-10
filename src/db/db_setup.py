@@ -23,6 +23,8 @@ def create_database():
             date TEXT NOT NULL,
             start_time TEXT NOT NULL,
             end_time TEXT NOT NULL,
+            in_store_hours REAL NOT NULL DEFAULT 0,
+            on_road_hours REAL NOT NULL DEFAULT 0,
             starting_mileage REAL NOT NULL,
             ending_mileage REAL NOT NULL,
             mileage REAL NOT NULL,
@@ -78,16 +80,16 @@ def create_database():
 
     # Sample shifts. Values for mileage/cash/credit/owed are derived from deliveries below.
     cursor.execute("""
-        INSERT OR IGNORE INTO shifts (driver_id, date, start_time, end_time, starting_mileage, ending_mileage, mileage, cash_tips, credit_tips, owed, mileage_rate)
-        VALUES (1, '2026-01-05', '10:00', '16:00', 0, 0, 0, 0, 0, 0, 0.65)
+        INSERT OR IGNORE INTO shifts (driver_id, date, start_time, end_time, in_store_hours, on_road_hours, starting_mileage, ending_mileage, mileage, cash_tips, credit_tips, owed, mileage_rate)
+        VALUES (1, '2026-01-05', '10:00', '16:00', 2.0, 4.0, 0, 0, 0, 0, 0, 0, 0.65)
     """)
     cursor.execute("""
-        INSERT OR IGNORE INTO shifts (driver_id, date, start_time, end_time, starting_mileage, ending_mileage, mileage, cash_tips, credit_tips, owed, mileage_rate)
-        VALUES (1, '2026-01-06', '11:30', '17:30', 0, 0, 0, 0, 0, 0, 0.65)
+        INSERT OR IGNORE INTO shifts (driver_id, date, start_time, end_time, in_store_hours, on_road_hours, starting_mileage, ending_mileage, mileage, cash_tips, credit_tips, owed, mileage_rate)
+        VALUES (1, '2026-01-06', '11:30', '17:30', 1.5, 4.5, 0, 0, 0, 0, 0, 0, 0.65)
     """)
     cursor.execute("""
-        INSERT OR IGNORE INTO shifts (driver_id, date, start_time, end_time, starting_mileage, ending_mileage, mileage, cash_tips, credit_tips, owed, mileage_rate)
-        VALUES (2, '2026-01-05', '12:00', '18:00', 0, 0, 0, 0, 0, 0, 0.65)
+        INSERT OR IGNORE INTO shifts (driver_id, date, start_time, end_time, in_store_hours, on_road_hours, starting_mileage, ending_mileage, mileage, cash_tips, credit_tips, owed, mileage_rate)
+        VALUES (2, '2026-01-05', '12:00', '18:00', 2.0, 4.0, 0, 0, 0, 0, 0, 0, 0.65)
     """)
 
     # Sample deliveries linked to shifts.

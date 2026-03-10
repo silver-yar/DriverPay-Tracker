@@ -149,6 +149,8 @@ function loadShifts() {
                 <td>${shift.date}</td>
                 <td>${shift.start}</td>
                 <td>${shift.end}</td>
+                <td>${shift.in_store_hours || 0}</td>
+                <td>${shift.on_road_hours || 0}</td>
                 <td>${parseFloat(shift.mileage).toFixed(2)}</td>
                 <td class="green">${shift.cash}</td>
                 <td class="green">${shift.credit}</td>
@@ -460,6 +462,10 @@ document.getElementById("add-shift-form").addEventListener("submit", (e) => {
   const date = document.getElementById("shift-date").value;
   const start = document.getElementById("shift-start").value;
   const end = document.getElementById("shift-end").value;
+  const inStoreHours =
+    parseFloat(document.getElementById("shift-in-store-hours").value) || 0;
+  const onRoadHours =
+    parseFloat(document.getElementById("shift-on-road-hours").value) || 0;
   const startingMileage = parseFloat(
     document.getElementById("shift-starting-mileage").value,
   );
@@ -470,7 +476,28 @@ document.getElementById("add-shift-form").addEventListener("submit", (e) => {
     document.getElementById("shift-mileage-rate").value,
   );
 
+  // Calculate total shift hours from start and end time
+  const startParts = start.split(":");
+  const endParts = end.split(":");
+  const startMinutes = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
+  const endMinutes = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
+  const totalShiftHours = (endMinutes - startMinutes) / 60;
+
   // Input Validation
+  if (inStoreHours < 0) {
+    alert("In-store hours cannot be negative.");
+    return;
+  }
+  if (onRoadHours < 0) {
+    alert("On-road hours cannot be negative.");
+    return;
+  }
+  if (inStoreHours + onRoadHours > totalShiftHours) {
+    alert(
+      `In-store hours (${inStoreHours}) + On-road hours (${onRoadHours}) = ${inStoreHours + onRoadHours} cannot exceed total shift hours (${totalShiftHours.toFixed(2)}).`,
+    );
+    return;
+  }
   if (startingMileage < 0) {
     alert("Starting mileage cannot be negative.");
     return;
@@ -498,6 +525,8 @@ document.getElementById("add-shift-form").addEventListener("submit", (e) => {
       date,
       start,
       end,
+      inStoreHours,
+      onRoadHours,
       startingMileage,
       endingMileage,
       cash,
@@ -511,6 +540,8 @@ document.getElementById("add-shift-form").addEventListener("submit", (e) => {
       date,
       start,
       end,
+      inStoreHours,
+      onRoadHours,
       startingMileage,
       endingMileage,
       cash,
@@ -572,6 +603,10 @@ document.getElementById("edit-shift-btn").addEventListener("click", () => {
     document.getElementById("shift-date").value = shift.date;
     document.getElementById("shift-start").value = shift.start_time;
     document.getElementById("shift-end").value = shift.end_time;
+    document.getElementById("shift-in-store-hours").value =
+      shift.in_store_hours || 0;
+    document.getElementById("shift-on-road-hours").value =
+      shift.on_road_hours || 0;
     document.getElementById("shift-starting-mileage").value =
       shift.starting_mileage;
     document.getElementById("shift-ending-mileage").value =

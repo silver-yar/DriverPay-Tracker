@@ -50,6 +50,8 @@
                                 <th>Date</th>
                                 <th>Start</th>
                                 <th>End</th>
+                                <th>In-Store Hours</th>
+                                <th>On-Road Hours</th>
                                 <th>Total Mileage</th>
                                 <th>Cash Tips</th>
                                 <th>Credit Tips</th>
@@ -150,6 +152,28 @@
                             >End Time:
                             <input type="time" id="shift-end" required /></label
                         ><br /><br />
+                        <label
+                            >In-Store Hours:
+                            <input
+                                type="number"
+                                step="0.25"
+                                min="0"
+                                id="shift-in-store-hours"
+                                value="0"
+                            />
+                        </label>
+                        <br /><br />
+                        <label
+                            >On-Road Hours:
+                            <input
+                                type="number"
+                                step="0.25"
+                                min="0"
+                                id="shift-on-road-hours"
+                                value="0"
+                            />
+                        </label>
+                        <br /><br />
                         <input
                             type="hidden"
                             id="shift-starting-mileage"
