@@ -32,6 +32,7 @@ def create_database():
             credit_tips REAL NOT NULL,
             owed REAL NOT NULL,
             mileage_rate REAL NOT NULL,
+            base_wages REAL NOT NULL DEFAULT 0,
             FOREIGN KEY (driver_id) REFERENCES drivers (id)
         )
     """)
@@ -60,6 +61,12 @@ def create_database():
     if "mileage" not in delivery_columns:
         cursor.execute("ALTER TABLE deliveries ADD COLUMN mileage REAL DEFAULT 0.0")
 
+    # Migration support for existing databases without base_wages on shifts.
+    cursor.execute("PRAGMA table_info(shifts)")
+    shift_columns = [row[1] for row in cursor.fetchall()]
+    if "base_wages" not in shift_columns:
+        cursor.execute("ALTER TABLE shifts ADD COLUMN base_wages REAL DEFAULT 0.0")
+
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS settings (
             id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -82,8 +89,8 @@ def create_database():
 
     # Sample shifts. Values for mileage/cash/credit/owed are derived from deliveries below.
     cursor.execute("""
-        INSERT OR IGNORE INTO shifts (driver_id, date, start_time, end_time, in_store_hours, on_road_hours, starting_mileage, ending_mileage, mileage, cash_tips, credit_tips, owed, mileage_rate)
-        VALUES (1, '2026-01-05', '10:00', '16:00', 2.0, 4.0, 0, 0, 0, 0, 0, 0, 0.65)
+        INSERT OR IGNORE INTO shifts (driver_id, date, start_time, end_time, in_store_hours, on_road_hours, starting_mileage, ending_mileage, mileage, cash_tips, credit_tips, owed, mileage_rate, base_wages)
+        VALUES (1, '2026-01-05', '10:00', '16:00', 2.0, 4.0, 0, 0, 0, 0, 0, 0, 0.65, 0)
     """)
     cursor.execute("""
         INSERT OR IGNORE INTO shifts (driver_id, date, start_time, end_time, in_store_hours, on_road_hours, starting_mileage, ending_mileage, mileage, cash_tips, credit_tips, owed, mileage_rate)

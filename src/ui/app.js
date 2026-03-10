@@ -172,6 +172,7 @@ function renderShiftSummaryCards(summary) {
             <div class="card green">Cash Tips<br><strong>$${summary.total_cash.toFixed(2)}</strong></div>
             <div class="card green">Credit Tips<br><strong>$${summary.total_credit.toFixed(2)}</strong></div>
             <div class="card ${owedColorClass}">Owed<br><strong>$${owedDisplay.toFixed(2)}</strong></div>
+            <div class="card green">Base Wages<br><strong>$${(summary.total_base_wages || 0).toFixed(2)}</strong></div>
         `;
 }
 
@@ -186,6 +187,7 @@ function updateShiftSummaryFromSelection() {
       total_cash: 0,
       total_credit: 0,
       total_owed: 0,
+      total_base_wages: 0,
     });
     return;
   }
@@ -196,12 +198,14 @@ function updateShiftSummaryFromSelection() {
   const credit = parseFloat(row.cells[6].textContent.replace("$", "")) || 0;
   const owed =
     parseFloat(row.cells[7].dataset.owedValue || row.cells[7].textContent) || 0;
+  const baseWages = parseFloat(row.cells[9].textContent.replace("$", "")) || 0;
 
   renderShiftSummaryCards({
     total_mileage: mileage,
     total_cash: cash,
     total_credit: credit,
     total_owed: owed,
+    total_base_wages: baseWages,
   });
 }
 
@@ -480,102 +484,125 @@ document.getElementById("add-shift-btn").addEventListener("click", () => {
   document.getElementById("add-shift-modal").style.display = "block";
 });
 
-document.getElementById("add-shift-form").addEventListener("submit", (e) => {
-  e.preventDefault();
-  const date = document.getElementById("shift-date").value;
-  const start = document.getElementById("shift-start").value;
-  const end = document.getElementById("shift-end").value;
-  const inStoreHours =
-    parseFloat(document.getElementById("shift-in-store-hours").value) || 0;
-  const onRoadHours =
-    parseFloat(document.getElementById("shift-on-road-hours").value) || 0;
-  const startingMileage = parseFloat(
-    document.getElementById("shift-starting-mileage").value,
-  );
-  const endingMileage = parseFloat(
-    document.getElementById("shift-ending-mileage").value,
-  );
-  const mileageRate = parseFloat(
-    document.getElementById("shift-mileage-rate").value,
-  );
-
-  // Calculate total shift hours from start and end time
-  const startParts = start.split(":");
-  const endParts = end.split(":");
-  const startMinutes = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
-  const endMinutes = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
-  const totalShiftHours = (endMinutes - startMinutes) / 60;
-
-  // Input Validation
-  if (inStoreHours < 0) {
-    alert("In-store hours cannot be negative.");
-    return;
-  }
-  if (onRoadHours < 0) {
-    alert("On-road hours cannot be negative.");
-    return;
-  }
-  if (inStoreHours + onRoadHours > totalShiftHours) {
-    alert(
-      `In-store hours (${inStoreHours}) + On-road hours (${onRoadHours}) = ${inStoreHours + onRoadHours} cannot exceed total shift hours (${totalShiftHours.toFixed(2)}).`,
+document
+  .getElementById("add-shift-form")
+  .addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const date = document.getElementById("shift-date").value;
+    const start = document.getElementById("shift-start").value;
+    const end = document.getElementById("shift-end").value;
+    const inStoreHours =
+      parseFloat(document.getElementById("shift-in-store-hours").value) || 0;
+    const onRoadHours =
+      parseFloat(document.getElementById("shift-on-road-hours").value) || 0;
+    const startingMileage = parseFloat(
+      document.getElementById("shift-starting-mileage").value,
     );
-    return;
-  }
-  if (startingMileage < 0) {
-    alert("Starting mileage cannot be negative.");
-    return;
-  }
-  if (endingMileage < 0) {
-    alert("Ending mileage cannot be negative.");
-    return;
-  }
-  if (mileageRate < 0) {
-    alert("Mileage rate cannot be negative.");
-    return;
-  }
-  if (endingMileage < startingMileage) {
-    alert("Ending mileage cannot be less than starting mileage.");
-    return;
-  }
+    const endingMileage = parseFloat(
+      document.getElementById("shift-ending-mileage").value,
+    );
+    const mileageRate = parseFloat(
+      document.getElementById("shift-mileage-rate").value,
+    );
 
-  const cash = parseFloat(document.getElementById("shift-cash").value);
-  const credit = parseFloat(document.getElementById("shift-credit").value);
-  // Owed is auto-calculated from deliveries, pass 0 here
-  const owed = 0;
-  if (modalMode === "edit") {
-    db.update_shift(
-      currentShiftId,
-      date,
-      start,
-      end,
-      inStoreHours,
-      onRoadHours,
-      startingMileage,
-      endingMileage,
-      cash,
-      credit,
-      owed,
-      mileageRate,
-    );
-  } else {
-    db.add_shift(
-      currentDriverId,
-      date,
-      start,
-      end,
-      inStoreHours,
-      onRoadHours,
-      startingMileage,
-      endingMileage,
-      cash,
-      credit,
-      owed,
-      mileageRate,
-    );
-  }
-  closeShiftModal();
-  loadShifts();
-});
+    // Calculate total shift hours from start and end time
+    const startParts = start.split(":");
+    const endParts = end.split(":");
+    const startMinutes = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
+    const endMinutes = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
+    const totalShiftHours = (endMinutes - startMinutes) / 60;
+
+    // Input Validation
+    if (inStoreHours < 0) {
+      alert("In-store hours cannot be negative.");
+      return;
+    }
+    if (onRoadHours < 0) {
+      alert("On-road hours cannot be negative.");
+      return;
+    }
+    if (inStoreHours + onRoadHours > totalShiftHours) {
+      alert(
+        `In-store hours (${inStoreHours}) + On-road hours (${onRoadHours}) = ${inStoreHours + onRoadHours} cannot exceed total shift hours (${totalShiftHours.toFixed(2)}).`,
+      );
+      return;
+    }
+    if (startingMileage < 0) {
+      alert("Starting mileage cannot be negative.");
+      return;
+    }
+    if (endingMileage < 0) {
+      alert("Ending mileage cannot be negative.");
+      return;
+    }
+    if (mileageRate < 0) {
+      alert("Mileage rate cannot be negative.");
+      return;
+    }
+    if (endingMileage < startingMileage) {
+      alert("Ending mileage cannot be less than starting mileage.");
+      return;
+    }
+
+    const cash = parseFloat(document.getElementById("shift-cash").value);
+    const credit = parseFloat(document.getElementById("shift-credit").value);
+    // Owed is auto-calculated from deliveries, pass 0 here
+    const owed = 0;
+
+    // Get settings for hourly rates
+    const settingsJson = await db.get_settings();
+    const settings = JSON.parse(settingsJson);
+    const inStoreRate = settings.default_in_store_hourly_rate || 15;
+    const onRoadRate = settings.default_on_road_hourly_rate || 20;
+
+    // Calculate base wages: (in_store_hours * in_store_rate) + (on_road_hours * on_road_rate) + (mileage * mileage_rate) + (tips_earned / total_hours)
+    const tipsEarned = cash + credit;
+    const totalHours = inStoreHours + onRoadHours;
+    const tipsPerHour = totalHours > 0 ? tipsEarned / totalHours : 0;
+    const mileagePay =
+      (startingMileage > 0 ? endingMileage - startingMileage : 0) * mileageRate;
+    const baseWages =
+      inStoreHours * inStoreRate +
+      onRoadHours * onRoadRate +
+      mileagePay +
+      tipsPerHour;
+
+    if (modalMode === "edit") {
+      db.update_shift(
+        currentShiftId,
+        date,
+        start,
+        end,
+        inStoreHours,
+        onRoadHours,
+        startingMileage,
+        endingMileage,
+        cash,
+        credit,
+        owed,
+        mileageRate,
+        baseWages,
+      );
+    } else {
+      db.add_shift(
+        currentDriverId,
+        date,
+        start,
+        end,
+        inStoreHours,
+        onRoadHours,
+        startingMileage,
+        endingMileage,
+        cash,
+        credit,
+        owed,
+        mileageRate,
+        baseWages,
+      );
+    }
+    closeShiftModal();
+    loadShifts();
+  });
 
 document.getElementById("cancel-add").addEventListener("click", () => {
   closeShiftModal();

@@ -181,7 +181,21 @@ class DBHandler(QObject):
         )
         self.conn.commit()
 
-    @Slot(str, str, str, str, float, float, float, float, float, float, float, float)
+    @Slot(
+        str,
+        str,
+        str,
+        str,
+        float,
+        float,
+        float,
+        float,
+        float,
+        float,
+        float,
+        float,
+        float,
+    )
     def update_shift(
         self,
         shift_id,
@@ -196,13 +210,14 @@ class DBHandler(QObject):
         credit_tips,
         owed,
         mileage_rate,
+        base_wages,
     ):
         # Calculate total mileage
         mileage = ending_mileage - starting_mileage
         cursor = self.conn.cursor()
         cursor.execute(
             """
-               UPDATE shifts SET date = ?, start_time = ?, end_time = ?, in_store_hours = ?, on_road_hours = ?, starting_mileage = ?, ending_mileage = ?, mileage = ?, cash_tips = ?, credit_tips = ?, owed = ?, mileage_rate = ?
+               UPDATE shifts SET date = ?, start_time = ?, end_time = ?, in_store_hours = ?, on_road_hours = ?, starting_mileage = ?, ending_mileage = ?, mileage = ?, cash_tips = ?, credit_tips = ?, owed = ?, mileage_rate = ?, base_wages = ?
                WHERE id = ?
            """,
             (
@@ -218,6 +233,7 @@ class DBHandler(QObject):
                 credit_tips,
                 owed,
                 mileage_rate,
+                base_wages,
                 shift_id,
             ),
         )
