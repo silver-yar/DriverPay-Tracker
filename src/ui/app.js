@@ -130,7 +130,7 @@ function renderDeliverySummaryCards(summary) {
             <div class="card green">Cash Tips<br><strong>$${summary.total_cash.toFixed(2)}</strong></div>
             <div class="card green">Credit Tips<br><strong>$${summary.total_credit.toFixed(2)}</strong></div>
             <div class="card green">Total Cash Collected<br><strong>$${summary.total_cash_collected.toFixed(2)}</strong></div>
-            <div class="card ${owedColorClass}">Owed<br><strong>$${owedDisplay.toFixed(2)}</strong></div>
+            <div class="card ${owedColorClass}">Cash Owed<br><strong>$${owedDisplay.toFixed(2)}</strong></div>
         `;
 }
 
@@ -156,6 +156,7 @@ function loadShifts() {
                 <td class="green">${shift.credit}</td>
                 <td class="${owedValue < 0 ? "red" : "green"}" data-owed-value="${owedValue}">$${Math.abs(owedValue).toFixed(2)}</td>
                 <td>${shift.mileage_rate}</td>
+                <td>${shift.base_wages}</td>
             `;
       table.appendChild(row);
     });
@@ -172,7 +173,7 @@ function renderShiftSummaryCards(summary) {
             <div class="card green">Cash Tips<br><strong>$${summary.total_cash.toFixed(2)}</strong></div>
             <div class="card green">Credit Tips<br><strong>$${summary.total_credit.toFixed(2)}</strong></div>
             <div class="card ${owedColorClass}">Owed<br><strong>$${owedDisplay.toFixed(2)}</strong></div>
-            <div class="card green">Base Wages<br><strong>$${(summary.total_base_wages || 0).toFixed(2)}</strong></div>
+            <div class="card green full-width">Total Base Wages<br><strong>$${(summary.total_base_wages || 0).toFixed(2)}</strong></div>
         `;
 }
 
@@ -181,7 +182,7 @@ function updateShiftSummaryFromSelection() {
     '#shift-table input[type="checkbox"]:checked',
   );
 
-  if (checked.length !== 1) {
+  if (checked.length === 0) {
     renderShiftSummaryCards({
       total_mileage: 0,
       total_cash: 0,
@@ -192,20 +193,37 @@ function updateShiftSummaryFromSelection() {
     return;
   }
 
-  const row = checked[0].closest("tr");
-  const mileage = parseFloat(row.cells[4].textContent) || 0;
-  const cash = parseFloat(row.cells[5].textContent.replace("$", "")) || 0;
-  const credit = parseFloat(row.cells[6].textContent.replace("$", "")) || 0;
-  const owed =
-    parseFloat(row.cells[7].dataset.owedValue || row.cells[7].textContent) || 0;
-  const baseWages = parseFloat(row.cells[9].textContent.replace("$", "")) || 0;
+  // Get shift IDs from checked checkboxes
+  const shiftIds = Array.from(checked).map((checkbox) =>
+    parseInt(checkbox.dataset.id),
+  );
 
-  renderShiftSummaryCards({
-    total_mileage: mileage,
-    total_cash: cash,
-    total_credit: credit,
-    total_owed: owed,
-    total_base_wages: baseWages,
+  // Get shift data from database
+  db.get_shifts_by_ids(shiftIds).then((shiftsJson) => {
+    const shifts = JSON.parse(shiftsJson);
+
+    // Aggregate values from all selected shifts
+    let totalMileage = 0;
+    let totalCash = 0;
+    let totalCredit = 0;
+    let totalOwed = 0;
+    let totalBaseWages = 0;
+
+    shifts.forEach((shift) => {
+      totalMileage += parseFloat(shift.mileage) || 0;
+      totalCash += parseFloat(shift.cash) || 0;
+      totalCredit += parseFloat(shift.credit) || 0;
+      totalOwed += parseFloat(shift.owed) || 0;
+      totalBaseWages += parseFloat(shift.base_wages) || 0;
+    });
+
+    renderShiftSummaryCards({
+      total_mileage: totalMileage,
+      total_cash: totalCash,
+      total_credit: totalCredit,
+      total_owed: totalOwed,
+      total_base_wages: totalBaseWages,
+    });
   });
 }
 

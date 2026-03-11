@@ -16,6 +16,60 @@ class DBHandler(QObject):
         self.conn = sqlite3.connect(db_path)
         self.conn.row_factory = sqlite3.Row
         self._ensure_delivery_mileage_column()
+        self._calculate_all_base_wages()
+
+    def _calculate_all_base_wages(self):
+        """Calculate and update base_wages for all shifts based on settings."""
+        try:
+            cursor = self.conn.cursor()
+
+            # Get settings for hourly rates
+            cursor.execute(
+                "SELECT default_in_store_hourly_rate, default_on_road_hourly_rate FROM settings LIMIT 1"
+            )
+            settings_row = cursor.fetchone()
+            if settings_row:
+                in_store_rate = settings_row["default_in_store_hourly_rate"] or 15.0
+                on_road_rate = settings_row["default_on_road_hourly_rate"] or 20.0
+            else:
+                in_store_rate = 15.0
+                on_road_rate = 20.0
+
+            # Get all shifts
+            cursor.execute(
+                "SELECT id, in_store_hours, on_road_hours, mileage, mileage_rate, cash_tips, credit_tips FROM shifts"
+            )
+            shifts = cursor.fetchall()
+
+            for shift in shifts:
+                in_store_hours = shift["in_store_hours"] or 0
+                on_road_hours = shift["on_road_hours"] or 0
+                mileage = shift["mileage"] or 0
+                mileage_rate = shift["mileage_rate"] or 0
+                cash_tips = shift["cash_tips"] or 0
+                credit_tips = shift["credit_tips"] or 0
+
+                tips_earned = cash_tips + credit_tips
+                total_hours = in_store_hours + on_road_hours
+                tips_per_hour = tips_earned / total_hours if total_hours > 0 else 0
+                mileage_pay = mileage * mileage_rate
+
+                base_wages = (
+                    in_store_hours * in_store_rate
+                    + on_road_hours * on_road_rate
+                    + mileage_pay
+                    + tips_per_hour
+                )
+
+                cursor.execute(
+                    "UPDATE shifts SET base_wages = ? WHERE id = ?",
+                    (base_wages, shift["id"]),
+                )
+
+            self.conn.commit()
+        except Exception as e:
+            # If calculation fails, just continue without updating
+            pass
 
     def _ensure_delivery_mileage_column(self):
         """Ensure legacy databases include the deliveries.mileage column."""
@@ -91,7 +145,7 @@ class DBHandler(QObject):
         cursor = self.conn.cursor()
         query = """
            SELECT s.id, s.date, s.start_time, s.end_time, s.in_store_hours, s.on_road_hours, s.starting_mileage, s.ending_mileage, s.mileage, s.owed, s.mileage_rate,
-                  s.cash_tips, s.credit_tips
+                  s.cash_tips, s.credit_tips, s.base_wages
            FROM shifts s
            WHERE s.driver_id = ?
         """
@@ -119,6 +173,9 @@ class DBHandler(QObject):
                     "credit": f"${row['credit_tips']:.2f}",
                     "owed": f"${row['owed']:.2f}",
                     "mileage_rate": f"${row['mileage_rate']:.2f}",
+                    "base_wages": f"${row['base_wages']:.2f}"
+                    if row["base_wages"]
+                    else "0.00",
                 }
             )
         return json.dumps(result)
@@ -139,7 +196,58 @@ class DBHandler(QObject):
         else:
             return json.dumps({})
 
+    @Slot("QVariantList", result=str)
+    def get_shifts_by_ids(self, shift_ids):
+        """Get multiple shifts by their IDs."""
+        if not shift_ids:
+            return json.dumps([])
+        cursor = self.conn.cursor()
+        placeholders = ",".join("?" * len(shift_ids))
+        query = f"""
+           SELECT id, driver_id, date, start_time, end_time, in_store_hours, on_road_hours, starting_mileage, ending_mileage, mileage, cash_tips, credit_tips, owed, mileage_rate, base_wages
+           FROM shifts WHERE id IN ({placeholders})
+        """
+        cursor.execute(query, shift_ids)
+        rows = cursor.fetchall()
+        result = []
+        for row in rows:
+            result.append(
+                {
+                    "id": row["id"],
+                    "driver_id": row["driver_id"],
+                    "date": row["date"],
+                    "start": row["start_time"],
+                    "end": row["end_time"],
+                    "in_store_hours": row["in_store_hours"] or 0,
+                    "on_road_hours": row["on_road_hours"] or 0,
+                    "starting_mileage": row["starting_mileage"],
+                    "ending_mileage": row["ending_mileage"],
+                    "mileage": row["mileage"],
+                    "cash": row["cash_tips"] or 0,
+                    "credit": row["credit_tips"] or 0,
+                    "owed": row["owed"] or 0,
+                    "mileage_rate": row["mileage_rate"] or 0,
+                    "base_wages": row["base_wages"] or 0,
+                }
+            )
+        return json.dumps(result)
+
     @Slot(str, str, str, str, float, float, float, float, float, float, float, float)
+    @Slot(
+        str,
+        str,
+        str,
+        str,
+        float,
+        float,
+        float,
+        float,
+        float,
+        float,
+        float,
+        float,
+        float,
+    )
     def add_shift(
         self,
         driver_id,
@@ -154,14 +262,15 @@ class DBHandler(QObject):
         credit_tips,
         owed,
         mileage_rate,
+        base_wages,
     ):
         # Calculate total mileage
         mileage = ending_mileage - starting_mileage
         cursor = self.conn.cursor()
         cursor.execute(
             """
-               INSERT INTO shifts (driver_id, date, start_time, end_time, in_store_hours, on_road_hours, starting_mileage, ending_mileage, mileage, cash_tips, credit_tips, owed, mileage_rate)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               INSERT INTO shifts (driver_id, date, start_time, end_time, in_store_hours, on_road_hours, starting_mileage, ending_mileage, mileage, cash_tips, credit_tips, owed, mileage_rate, base_wages)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
            """,
             (
                 driver_id,
@@ -177,6 +286,7 @@ class DBHandler(QObject):
                 credit_tips,
                 owed,
                 mileage_rate,
+                base_wages,
             ),
         )
         self.conn.commit()
