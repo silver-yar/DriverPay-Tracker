@@ -358,6 +358,57 @@ document.getElementById("search-btn").addEventListener("click", () => {
   }
 });
 
+// Yearly Summary Report Button
+document.getElementById("yearly-summary-btn").addEventListener("click", () => {
+  if (!currentDriverId) {
+    alert("Please select a driver first.");
+    return;
+  }
+  // Set current year as default
+  const currentYear = new Date().getFullYear();
+  document.getElementById("year-input").value = currentYear;
+  document.getElementById("year-input-modal").style.display = "block";
+});
+
+// Cancel year input
+document.getElementById("cancel-year-input").addEventListener("click", () => {
+  document.getElementById("year-input-modal").style.display = "none";
+});
+
+// Handle year input form submission
+document.getElementById("year-input-form").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const year = document.getElementById("year-input").value;
+  document.getElementById("year-input-modal").style.display = "none";
+
+  // Get the driver's name
+  const driverName =
+    document.querySelector(".driver-list .active")?.textContent ||
+    "Unknown Driver";
+
+  // Get yearly summary from database
+  db.get_yearly_summary(currentDriverId, year).then((summaryJson) => {
+    const summary = JSON.parse(summaryJson);
+
+    // Display the yearly summary modal
+    document.getElementById("yearly-summary-title").textContent =
+      `Yearly Summary Report - ${driverName}`;
+    document.getElementById("yearly-summary-content").innerHTML = `
+      <p><strong>Year:</strong> ${year}</p>
+      <p><strong>Total Yearly Wages:</strong> $${summary.total_base_wages.toFixed(2)}</p>
+      <p><strong>Total Yearly Mileage:</strong> ${summary.total_mileage.toFixed(2)} miles</p>
+    `;
+    document.getElementById("yearly-summary-modal").style.display = "block";
+  });
+});
+
+// Close yearly summary modal
+document
+  .getElementById("close-yearly-summary")
+  .addEventListener("click", () => {
+    document.getElementById("yearly-summary-modal").style.display = "none";
+  });
+
 document.getElementById("shift-table").addEventListener("change", (e) => {
   if (e.target && e.target.matches('input[type="checkbox"]')) {
     updateShiftSummaryFromSelection();

@@ -384,6 +384,27 @@ class DBHandler(QObject):
             }
         )
 
+    @Slot(str, str, result=str)
+    def get_yearly_summary(self, driver_id, year):
+        """Get yearly summary for a driver including total base wages and total mileage."""
+        self._sync_shift_totals(driver_id=driver_id)
+        cursor = self.conn.cursor()
+        query = """
+           SELECT
+               SUM(mileage) as total_mileage,
+               SUM(base_wages) as total_base_wages
+           FROM shifts
+           WHERE driver_id = ? AND strftime('%Y', date) = ?
+        """
+        cursor.execute(query, (driver_id, str(year)))
+        row = cursor.fetchone()
+        return json.dumps(
+            {
+                "total_mileage": row["total_mileage"] or 0,
+                "total_base_wages": row["total_base_wages"] or 0,
+            }
+        )
+
     @Slot(str, str, str, result=str)
     def get_deliveries(self, driver_id, start_date="", end_date=""):
         cursor = self.conn.cursor()
