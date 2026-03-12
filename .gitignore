@@ -8,6 +8,7 @@
 pyrightconfig.json
 
 # User-specific files
+*.spec
 *.rsuser
 *.suo
 *.user
@@ -37,6 +38,8 @@ bld/
 [Oo]ut/
 [Ll]og/
 [Ll]ogs/
+dist/
+build/
 
 # Build results on 'Bin' directories
 **/[Bb]in/*
