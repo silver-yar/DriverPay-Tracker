@@ -21,6 +21,12 @@ new QWebChannel(qt.webChannelTransport, function (channel) {
   loadDrivers();
 });
 
+//helper function to prevent undefined values
+function toNumber(value) {
+  if (value === null || value === undefined || value === "") return 0;
+  return parseFloat(String(value).replace(/[$,%]/g, "").trim()) || 0;
+}
+
 function loadDrivers(preferredDriverId = null) {
   db.get_drivers().then((driversJson) => {
     const drivers = JSON.parse(driversJson);
@@ -123,43 +129,140 @@ function switchTab(tab) {
 function renderDeliverySummaryCards(summary) {
   const cards = document.getElementById("delivery-summary-cards");
   const owedColorClass = summary.total_owed < 0 ? "red" : "green";
+  const owedLabel =
+    summary.total_owed < 0 ? "Cash Owed to Store" : "Amount Owed to Driver";
   const owedDisplay = Math.abs(summary.total_owed);
 
   cards.innerHTML = `
-            <div class="card green">Total Mileage<br><strong>${summary.total_mileage.toFixed(2)}</strong></div>
-            <div class="card green">Cash Tips<br><strong>$${summary.total_cash.toFixed(2)}</strong></div>
-            <div class="card green">Credit Tips<br><strong>$${summary.total_credit.toFixed(2)}</strong></div>
-            <div class="card green">Total Cash Collected<br><strong>$${summary.total_cash_collected.toFixed(2)}</strong></div>
-            <div class="card ${owedColorClass}">Cash Owed<br><strong>$${owedDisplay.toFixed(2)}</strong></div>
-        `;
+    <div class="card green">Total Mileage<br><strong>${summary.total_mileage.toFixed(2)}</strong></div>
+    <div class="card green">Cash Tips<br><strong>$${summary.total_cash.toFixed(2)}</strong></div>
+    <div class="card green">Credit Tips<br><strong>$${summary.total_credit.toFixed(2)}</strong></div>
+    <div class="card green">Total Tips<br><strong>$${summary.total_tips.toFixed(2)}</strong></div>
+    <div class="card green">Total Cash Collected<br><strong>$${summary.total_cash_collected.toFixed(2)}</strong></div>
+    <div class="card green">Mileage Reimbursement<br><strong>$${summary.mileage_reimbursement.toFixed(2)}</strong></div>
+    <div class="card green">Take-Home Pay<br><strong>$${summary.take_home_pay.toFixed(2)}</strong></div>
+    <div class="card ${owedColorClass}">${owedLabel}<br><strong>$${owedDisplay.toFixed(2)}</strong></div>
+  `;
 }
 
 // Shifts Functions
+function calculateShiftReconciliation(shift, deliveries) {
+  const shiftDeliveries = deliveries.filter(
+    (delivery) => String(delivery.shift_id || "") === String(shift.id),
+  );
+
+  let cashTips = 0;
+  let creditTips = 0;
+  let cashCollected = 0;
+
+  shiftDeliveries.forEach((delivery) => {
+    const collected =
+      parseFloat(String(delivery.amount_collected || "$0").replace("$", "")) || 0;
+    const cashTip = parseFloat(delivery.cash_tip || 0) || 0;
+    const creditTip =
+      parseFloat(String(delivery.card_tip || "$0").replace("$", "")) || 0;
+
+    cashTips += cashTip;
+    creditTips += creditTip;
+
+    const paymentType = String(delivery.payment_type || "").toLowerCase();
+
+    if (paymentType === "cash") {
+      // Full collected amount is physical cash
+      cashCollected += collected;
+    } else {
+      // For card/debit orders, only the cash tip is physical cash
+      cashCollected += cashTip;
+    }
+  });
+
+  const totalTips = cashTips + creditTips;
+
+  const mileage =
+	toNumber(shift.mileage) ||
+	Math.max(
+		0,
+		toNumber(shift.ending_mileage) - toNumber(shift.starting_mileage),
+  );
+
+	const mileageRate = toNumber(shift.mileage_rate);
+	const mileageReimbursement = mileage * mileageRate;
+
+	const savedBaseWages = toNumber(shift.base_wages);
+
+	const inStoreHours = toNumber(shift.in_store_hours);
+	const onRoadHours = toNumber(shift.on_road_hours);
+
+	const settingsInStoreRate = toNumber(
+		shift.in_store_rate || shift.in_store_hourly_rate,
+	);
+	const settingsOnRoadRate = toNumber(
+		shift.on_road_rate || shift.on_road_hourly_rate,
+	);
+
+	const calculatedBaseWages =
+		inStoreHours * settingsInStoreRate +
+		onRoadHours * settingsOnRoadRate;
+
+	const baseWages =
+		savedBaseWages > 0 ? savedBaseWages : calculatedBaseWages;
+
+  // Round take-home to nearest dollar for checkout
+  const takeHomePay = Math.round(totalTips + mileageReimbursement);
+
+  // Negative means driver owes store
+  const owed = takeHomePay - cashCollected;
+
+  return {
+    mileage,
+    cashTips,
+    creditTips,
+    totalTips,
+    cashCollected,
+    mileageReimbursement,
+    takeHomePay,
+    owed,
+	baseWages,
+  };
+}
+
 function loadShifts() {
   if (!currentDriverId) return;
-  db.get_shifts(currentDriverId, startDate, endDate).then((shiftsJson) => {
+
+  Promise.all([
+    db.get_shifts(currentDriverId, startDate, endDate),
+    db.get_deliveries(currentDriverId, startDate, endDate),
+  ]).then(([shiftsJson, deliveriesJson]) => {
     const shifts = JSON.parse(shiftsJson);
+    const deliveries = JSON.parse(deliveriesJson);
+
     const table = document.getElementById("shift-table");
     table.innerHTML = "";
+
     shifts.forEach((shift) => {
-      const owedValue = parseFloat(String(shift.owed).replace("$", "")) || 0;
+      const calc = calculateShiftReconciliation(shift, deliveries);
+      const owedValue = calc.owed;
+
       const row = document.createElement("tr");
       row.innerHTML = `
-                <td><input type="checkbox" data-id="${shift.id}"></td>
-                <td>${shift.date}</td>
-                <td>${shift.start}</td>
-                <td>${shift.end}</td>
-                <td>${shift.in_store_hours || 0}</td>
-                <td>${shift.on_road_hours || 0}</td>
-                <td>${parseFloat(shift.mileage).toFixed(2)}</td>
-                <td class="green">${shift.cash}</td>
-                <td class="green">${shift.credit}</td>
-                <td class="${owedValue < 0 ? "red" : "green"}" data-owed-value="${owedValue}">$${Math.abs(owedValue).toFixed(2)}</td>
-                <td>${shift.mileage_rate}</td>
-                <td>${shift.base_wages}</td>
-            `;
+        <td><input type="checkbox" data-id="${shift.id}"></td>
+        <td>${shift.date}</td>
+        <td>${shift.start}</td>
+        <td>${shift.end}</td>
+        <td>${shift.in_store_hours || 0}</td>
+        <td>${shift.on_road_hours || 0}</td>
+        <td>${calc.mileage.toFixed(2)}</td>
+        <td class="green">$${calc.cashTips.toFixed(2)}</td>
+        <td class="green">$${calc.creditTips.toFixed(2)}</td>
+        <td class="${owedValue < 0 ? "red" : "green"}" data-owed-value="${owedValue}">
+			$${Math.abs(owedValue).toFixed(2)}
+		</td>
+		<td>$${toNumber(shift.mileage_rate).toFixed(2)}</td>
+		<td>$${calc.baseWages.toFixed(2)}</td>
+      `;
       table.appendChild(row);
     });
+
     updateShiftSummaryFromSelection();
   });
 }
@@ -173,7 +276,7 @@ function renderShiftSummaryCards(summary) {
             <div class="card green">Cash Tips<br><strong>$${summary.total_cash.toFixed(2)}</strong></div>
             <div class="card green">Credit Tips<br><strong>$${summary.total_credit.toFixed(2)}</strong></div>
             <div class="card ${owedColorClass}">Owed<br><strong>$${owedDisplay.toFixed(2)}</strong></div>
-            <div class="card green full-width">Total Base Wages<br><strong>$${(summary.total_base_wages || 0).toFixed(2)}</strong></div>
+            <div class="card green">Base Wages<br><strong>$${(summary.base_wages || 0).toFixed(2)}</strong></div>
         `;
 }
 
@@ -193,28 +296,33 @@ function updateShiftSummaryFromSelection() {
     return;
   }
 
-  // Get shift IDs from checked checkboxes
   const shiftIds = Array.from(checked).map((checkbox) =>
     parseInt(checkbox.dataset.id),
   );
 
-  // Get shift data from database
-  db.get_shifts_by_ids(shiftIds).then((shiftsJson) => {
+  Promise.all([
+    db.get_shifts_by_ids(shiftIds),
+    db.get_deliveries(currentDriverId, startDate, endDate),
+  ]).then(([shiftsJson, deliveriesJson]) => {
     const shifts = JSON.parse(shiftsJson);
+    const deliveries = JSON.parse(deliveriesJson);
 
-    // Aggregate values from all selected shifts
     let totalMileage = 0;
     let totalCash = 0;
     let totalCredit = 0;
     let totalOwed = 0;
-    let totalBaseWages = 0;
+    let totalTakeHome = 0;
+	let totalBaseWages = 0;
 
     shifts.forEach((shift) => {
-      totalMileage += parseFloat(shift.mileage) || 0;
-      totalCash += parseFloat(shift.cash) || 0;
-      totalCredit += parseFloat(shift.credit) || 0;
-      totalOwed += parseFloat(shift.owed) || 0;
-      totalBaseWages += parseFloat(shift.base_wages) || 0;
+      const calc = calculateShiftReconciliation(shift, deliveries);
+
+      totalMileage += calc.mileage;
+      totalCash += calc.cashTips;
+      totalCredit += calc.creditTips;
+      totalOwed += calc.owed;
+      totalTakeHome += calc.takeHomePay;
+	  totalBaseWages += calc.baseWages;
     });
 
     renderShiftSummaryCards({
@@ -222,7 +330,8 @@ function updateShiftSummaryFromSelection() {
       total_cash: totalCash,
       total_credit: totalCredit,
       total_owed: totalOwed,
-      total_base_wages: totalBaseWages,
+      total_base_wages: totalTakeHome,
+	  base_wages: totalBaseWages,
     });
   });
 }
@@ -284,66 +393,93 @@ function loadDeliveries() {
 
 function loadDeliveriesSummary() {
   if (!currentDriverId) return;
+
   if (!selectedShiftIdForDeliveries) {
     renderDeliverySummaryCards({
       total_mileage: 0,
       total_cash: 0,
       total_credit: 0,
-      total_owed: 0,
+      total_tips: 0,
       total_cash_collected: 0,
+      mileage_reimbursement: 0,
+      take_home_pay: 0,
+      total_owed: 0,
     });
     return;
   }
 
-  db.get_deliveries(currentDriverId, startDate, endDate).then(
-    (deliveriesJson) => {
-      const deliveries = JSON.parse(deliveriesJson).filter(
-        (delivery) =>
-          String(delivery.shift_id || "") ===
-          String(selectedShiftIdForDeliveries),
-      );
+  Promise.all([
+    db.get_deliveries(currentDriverId, startDate, endDate),
+    db.get_shift(selectedShiftIdForDeliveries),
+  ]).then(([deliveriesJson, shiftJson]) => {
+    const deliveries = JSON.parse(deliveriesJson).filter(
+      (delivery) =>
+        String(delivery.shift_id || "") === String(selectedShiftIdForDeliveries),
+    );
 
-      const summary = deliveries.reduce(
-        (acc, delivery) => {
-          const subtotal = parseFloat(
-            String(delivery.order_subtotal || "$0").replace("$", ""),
-          );
-          const collected = parseFloat(
-            String(delivery.amount_collected || "$0").replace("$", ""),
-          );
-          const mileage = parseFloat(delivery.mileage || 0);
-          const cashTip = parseFloat(delivery.cash_tip || 0);
-          const creditTip = parseFloat(
-            String(delivery.card_tip || "$0").replace("$", ""),
-          );
+    const shift = JSON.parse(shiftJson);
+    const mileageRate = toNumber(shift.mileage_rate);
 
-          acc.total_mileage += mileage;
-          acc.total_credit += creditTip;
-          acc.total_cash += cashTip;
-          acc.total_tips += creditTip + cashTip;
-          if (
-            delivery.payment_type &&
-            delivery.payment_type.toLowerCase() === "cash"
-          ) {
+    const summary = deliveries.reduce(
+      (acc, delivery) => {
+        const subtotal = parseFloat(
+          String(delivery.order_subtotal || "$0").replace("$", ""),
+        );
+        const collected = parseFloat(
+          String(delivery.amount_collected || "$0").replace("$", ""),
+        );
+        const mileage = parseFloat(delivery.mileage || 0);
+        const cashTip = parseFloat(delivery.cash_tip || 0);
+        const creditTip = parseFloat(
+          String(delivery.card_tip || "$0").replace("$", ""),
+        );
+
+        acc.total_mileage += mileage;
+        acc.total_credit += creditTip;
+        acc.total_cash += cashTip;
+        acc.total_tips += creditTip + cashTip;
+
+        if (delivery.payment_type) {
+          const paymentType = delivery.payment_type.toLowerCase();
+
+          if (paymentType === "cash") {
+            // Full collected amount is physical cash
             acc.total_cash_collected += collected;
+          } else {
+            // For card/debit orders, only cash tip is physical cash
+            acc.total_cash_collected += cashTip;
           }
-          return acc;
-        },
-        {
-          total_mileage: 0,
-          total_cash: 0,
-          total_credit: 0,
-          total_owed: 0,
-          total_tips: 0,
-          total_cash_collected: 0,
-        },
-      );
-      // Keep owed in sync with shift logic.
-      summary.total_owed = summary.total_tips - summary.total_cash_collected;
+        }
 
-      renderDeliverySummaryCards(summary);
-    },
-  );
+        return acc;
+      },
+      {
+        total_mileage: 0,
+        total_cash: 0,
+        total_credit: 0,
+        total_tips: 0,
+        total_cash_collected: 0,
+        mileage_reimbursement: 0,
+        take_home_pay: 0,
+        total_owed: 0,
+      },
+    );
+
+    summary.mileage_reimbursement = summary.total_mileage * mileageRate;
+    // Exact take-home before rounding
+	const exactTakeHome = summary.total_tips + summary.mileage_reimbursement;
+
+	// Round take-home to nearest whole dollar for checkout
+	summary.take_home_pay = Math.round(exactTakeHome);
+
+	// Positive = store owes driver, Negative = driver owes store
+	summary.total_owed = summary.take_home_pay - summary.total_cash_collected;
+
+    // Positive = store owes driver, Negative = driver owes store
+    summary.total_owed = summary.take_home_pay - summary.total_cash_collected;
+
+    renderDeliverySummaryCards(summary);
+  });
 }
 
 // Search Button
@@ -543,11 +679,9 @@ document.getElementById("add-shift-btn").addEventListener("click", () => {
   db.get_settings().then((settingsJson) => {
     const settings = JSON.parse(settingsJson);
     document.getElementById("shift-mileage-rate").value =
-      settings.default_mileage_rate;
-    document.getElementById("shift-in-store-hours").value =
-      settings.default_in_store_hourly_rate || 0;
-    document.getElementById("shift-on-road-hours").value =
-      settings.default_on_road_hourly_rate || 0;
+		settings.default_mileage_rate;
+	document.getElementById("shift-in-store-hours").value = 0;
+	document.getElementById("shift-on-road-hours").value = 0;
   });
 
   document.getElementById("add-shift-modal").style.display = "block";
@@ -631,10 +765,8 @@ document
     const mileagePay =
       (startingMileage > 0 ? endingMileage - startingMileage : 0) * mileageRate;
     const baseWages =
-      inStoreHours * inStoreRate +
-      onRoadHours * onRoadRate +
-      mileagePay +
-      tipsPerHour;
+      ((inStoreHours * inStoreRate) +
+      (onRoadHours * onRoadRate)).toFixed(2);
 
     if (modalMode === "edit") {
       db.update_shift(
@@ -735,7 +867,7 @@ document.getElementById("edit-shift-btn").addEventListener("click", () => {
     document.getElementById("shift-credit").value = shift.credit_tips;
     document.getElementById("shift-owed").value = shift.owed;
     document.getElementById("shift-mileage-rate").value =
-      shift.mileage_rate_rate;
+      shift.mileage_rate;
     document.getElementById("add-shift-modal").style.display = "block";
   });
 });
@@ -868,7 +1000,7 @@ function calculateTip(isInitialLoad = false) {
 
   // Calculate tip percentage based on subtotal
   let tipPercent = 0;
-  if (subtotal > 0) {
+  if (collected > 0) {
     tipPercent = (totalTip / subtotal) * 100;
   }
   document.getElementById("delivery-tip-percent").value =
