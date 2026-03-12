@@ -7,10 +7,16 @@ from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import QApplication
 
 from db.db_handler import DBHandler
+from db.db_setup import create_database
 
 app = QApplication(sys.argv)
 
 db_path = Path(__file__).parent / "driver_pay_tracker.db"
+
+# Create database on first launch if it doesn't exist
+if not db_path.exists():
+    create_database()
+
 db_handler = DBHandler(str(db_path))
 channel = QWebChannel(app)
 channel.registerObject("db", db_handler)
