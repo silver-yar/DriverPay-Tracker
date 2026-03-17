@@ -1,0 +1,85 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            artifact-name: macos
+          - os: windows-latest
+            artifact-name: windows
+          - os: ubuntu-latest
+            artifact-name: linux
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build application
+        run: python build.py
+        shell: bash
+
+      - name: Create DMG (macOS only)
+        if: matrix.os == 'macos-latest'
+        run: |
+          hdiutil create -volname DriverPay-Tracker -srcfolder "dist/DriverPay-Tracker.app" -ov -format UDZO "dist/DriverPay-Tracker-macos.dmg"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}-build
+          path: |
+            dist/DriverPay-Tracker.exe
+            dist/DriverPay-Tracker-macos.dmg
+            dist/DriverPay-Tracker.app
+            dist/DriverPay-Tracker
+          if-no-files-found: error
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          pattern: '*-build'
+          merge-multiple: false
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: true
+          files: |
+            artifacts/windows-build/DriverPay-Tracker.exe
+            artifacts/macos-build/DriverPay-Tracker-macos.dmg
+            artifacts/macos-build/DriverPay-Tracker.app
+            artifacts/linux-build/DriverPay-Tracker
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
