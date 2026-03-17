@@ -18,8 +18,6 @@ jobs:
             artifact-name: macos
           - os: windows-latest
             artifact-name: windows
-          - os: ubuntu-latest
-            artifact-name: linux
 
     runs-on: ${{ matrix.os }}
 
@@ -80,6 +78,5 @@ jobs:
             artifacts/windows-build/DriverPay-Tracker.exe
             artifacts/macos-build/DriverPay-Tracker-macos.dmg
             artifacts/macos-build/DriverPay-Tracker.app
-            artifacts/linux-build/DriverPay-Tracker
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
